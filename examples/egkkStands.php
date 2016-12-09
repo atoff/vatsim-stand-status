@@ -1,6 +1,6 @@
 <?php
 
-use CobaltGrid\StandStatus;
+use CobaltGrid\VatsimStandStatus\StandStatus;
 
 require_once '../vendor/autoload.php';
 

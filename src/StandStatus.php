@@ -1,5 +1,5 @@
 <?php
-namespace CobaltGrid\StandStatus;
+namespace CobaltGrid\VatsimStandStatus;
 
 use Vatsimphp\VatsimData;
 
