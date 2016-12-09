@@ -1,5 +1,5 @@
 <?php
-use Vatsimphp\VatsimData;
+use CobaltGrid\VatsimStandStatus;
 
 require_once 'vendor/autoload.php';
 
