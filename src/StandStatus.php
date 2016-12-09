@@ -1,7 +1,7 @@
 <?php
-use CobaltGrid\VatsimStandStatus;
+namespace CobaltGrid\StandStatus;
 
-require_once 'vendor/autoload.php';
+use Vatsimphp\VatsimData;
 
 class StandStatus {
 
