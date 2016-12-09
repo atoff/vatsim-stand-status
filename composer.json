@@ -14,5 +14,10 @@
     ],
     "require": {
         "skymeyer/vatsimphp": "1.0.*"
-    }
+    },
+    "autoload": {
+        "psr-4": {
+            "CobaltGrid\\": "src"
+        }
+    },
 }
