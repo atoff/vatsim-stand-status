@@ -247,6 +247,11 @@ class StandStatus {
           if(isset($stands[$newStand])){
             $standSides[] = $newStand;
           }
+          // Set the base stand to occupied also
+          $newStand = str_replace("L", "", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
         }
       }else{
         // Stand has no side, but may have L / R sides
