@@ -4,7 +4,7 @@ use CobaltGrid\VatsimStandStatus\StandStatus;
 
 require_once '../vendor/autoload.php';
 
-$StandStatus = new StandStatus("EGKK", dirname(__FILE__) . "/standData/egkkstands.csv", 51.148056, -0.190278);
+$StandStatus = new StandStatus("EGLL", dirname(__FILE__) . "/standData/egllstands.csv", 51.4775, -0.461389);
 
 
 
