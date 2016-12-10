@@ -47,18 +47,72 @@ class StandStatus {
      private $maxAircraftGroundspeed = 10; // In knots
 
 
-    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate) {
+    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $minAirportDistnace = null) {
       $this->airportICAO = $airportICAO;
       $this->airportStandsFile = $airportStandsFile;
       $this->airportCoordinates = array("lat" => $airportLatCoordinate, "long" => $airportLongCoordinate);
+      if($minAirportDistnace != null){
+        $this->minDistanceFromAirport = $minAirportDistnace;
+      }
+
       if($this->loadStandsData()){
         if($this->getAircraftWithinParameters()){
           $this->checkIfAircraftAreOnStand();
+        }
+      }
+
+    }
+
+    public function allStands($pageNo = null, $pageLimit = null){
+      if($pageLimit == null){
+        return $this->stands;
+      }else{
+        if($pageNo == null){
+          // Assume first page
+          return array_slice( $this->stands, 0, $pageLimit );
+        }else{
+          return array_slice( $this->stands, ($pageNo * $pageLimit) - $pageLimit, $pageLimit );
         }
 
       }
 
     }
+
+    public function occupiedStands($pageNo = null, $pageLimit = null){
+      $occupiedStands = $this->occupiedStands;
+      foreach($occupiedStands as $stand){
+        $occupiedStands[$stand] = $this->stands[$stand]; // Fill in pilot data
+      }
+
+      if($pageLimit == null){
+        return $occupiedStands;
+      }else{
+        if($pageNo == null){
+          // Assume first page
+          return array_slice( $occupiedStands, 0, $pageLimit );
+        }else{
+          return array_slice( $occupiedStands, ($pageNo * $pageLimit) - $pageLimit, $pageLimit );
+        }
+
+      }
+    }
+
+    public function allStandsPaginationArray($pageLimit){
+      // Work out the ammount of pages
+      $noOfPages = ceil(count($this->stands) / $pageLimit);
+      $pageinationArray = array();
+      for($i = 0;$i < $noOfPages;$i++){
+        $pageinationArray[] = $this->allStands($i, $pageLimit);
+      }
+
+      return $pageinationArray;
+
+
+
+
+    }
+
+
 
 
     // Load the stand data
@@ -170,19 +224,14 @@ class StandStatus {
 
           }
           $this->checkAndSetStandOccupied($minStandID, $pilot);
-          // setStandSidesOccupied($minStandID, $pilot);
-          // $occstands[$minStandID] = $pilot;
         }else if (count($possibleStands) == 1) {
           $this->checkAndSetStandOccupied($possibleStands[0]['id'], $pilot);
-          // setStandSidesOccupied(, $pilot);
-          // $occstands[$possibleStands[0]['id']] = $pilot;
         }
 
       }
     }
 
     function checkAndSetStandOccupied($standID, $pilot){
-
 
       // Firstly set the acutal stand as occupied
       $this->setStandOccupied($standID, $pilot);
