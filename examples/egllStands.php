@@ -4,11 +4,74 @@ use CobaltGrid\VatsimStandStatus\StandStatus;
 
 require_once '../vendor/autoload.php';
 
-$StandStatus = new StandStatus("EGLL", dirname(__FILE__) . "/standData/egllstands.csv", 51.4775, -0.461389);
-
-
-
+$StandStatus = new StandStatus("EGLL", dirname(__FILE__) . "/standData/egllstands.csv", 51.4775, -0.461389, 3);
 ?>
+<!-- GMaps & Labels -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key="></script>
+<script src="js/maplabel-min.js"></script>
+
+<script>
+  $(document).ready(function(){
+		var center = {lat: 51.4675, lng: -0.461389};
+		map = new google.maps.Map(document.getElementById('map'), {
+      zoom: 14,
+      mapTypeId: 'satellite',
+      center: center,
+      disableDefaultUI: true
+
+    });
+    <?php
+    foreach($StandStatus->occupiedStands() as $stand){
+      ?>
+      var cityCircle = new google.maps.Circle({
+          strokeColor: '#FF0000',
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: '#FF0000',
+          fillOpacity: 0.35,
+          map: map,
+          center: {lat:
+            <?php
+            echo $stand['occupied']['latitude'];
+            ?>, lng:
+            <?php
+            echo $stand['occupied']['longitude'];
+            ?>},
+          radius: 40
+        });
+        var mapLabel = new MapLabel({
+          text: "<?php echo $stand['occupied']['callsign'] ?>",
+          position: new google.maps.LatLng(
+            <?php
+            echo $stand['occupied']['latitude'];
+            ?>,
+            <?php
+            echo $stand['occupied']['longitude'];
+            ?>),
+          map: map,
+          fontSize: 12,
+          strokeWeight: 2
+        });
+      <?php
+    }
+
+     ?>
+		var cityCircle = new google.maps.Circle({
+        strokeColor: '#FF0000',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: '#FF0000',
+        fillOpacity: 0.35,
+        map: map,
+        center: {lat: 19.505434, lng:-98.919304},
+        radius: 100000
+      });
+
+  });
+</script>
+<div id="map" style="height: 500px;width: 700px;"></div>
+
 <table border="1">
   <tr>
     <th>Stand</th>
