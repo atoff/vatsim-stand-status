@@ -13,7 +13,7 @@ class StandStatus {
      Data Source
     */
 
-    private $VATSIMDataAPI = "http://api.vateud.net/online/pilots/egkk.json";
+    private $VATSIMDataAPI = "";
 
     /*
      Database
@@ -32,7 +32,7 @@ class StandStatus {
 
     public $airportICAO;
     public $airportName;
-    public $airportBounds;
+    public $airportCoordinates;
 
     public $airportStandsFile;
 
@@ -40,16 +40,24 @@ class StandStatus {
       Configuration
      */
 
-     private $minStandDistance = 0.06;
+     private $minStandDistance = 0.06; // In kilometeres
      private $hideStandSidesWhenOccupied = true;
+     private $minDistanceFromAirport = 2; // In kilometeres
+     private $maxAircraftAltitude = 500; // In feet
+     private $maxAircraftGroundspeed = 10; // In knots
 
 
-    public function __construct($airportICAO, $airportStandsFile) {
+    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate) {
       $this->airportICAO = $airportICAO;
       $this->airportStandsFile = $airportStandsFile;
-      $this->loadStandsData();
-      $this->getAircraftWithinParameters();
-      $this->checkIfAircraftAreOnStand();
+      $this->airportCoordinates = array("lat" => $airportLatCoordinate, "long" => $airportLongCoordinate);
+      if($this->loadStandsData()){
+        if($this->getAircraftWithinParameters()){
+          $this->checkIfAircraftAreOnStand();
+        }
+
+      }
+
     }
 
 
@@ -78,10 +86,14 @@ class StandStatus {
           }
           if (!feof($handle)) {
               echo "Error: unexpected fgets() fail\n";
+              return false;
           }
           fclose($handle);
+      }else{
+        return false;
       }
       $this->stands = $array;
+      return true;
     }
 
     function getAircraftWithinParameters(){
@@ -90,18 +102,25 @@ class StandStatus {
 
       $pilots = $vatsim->getPilots()->toArray();
 
-      $icao = "EGKK";
+      if(count($pilots) == 0){
+        return false;
+      }
+      if(($this->airportCoordinates['lat'] == null) || ($this->airportCoordinates['long'] == null) ){
+        return false;
+      }
+
 
       $filteredResults = array();
       foreach($pilots as $pilot){
-        if(($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], 51.148056, -0.190278) < 2) ){
-          if(($pilot['groundspeed'] < 10) && ($pilot['altitude'] < 500)){
+        if(($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->minDistanceFromAirport) ){
+          if(($pilot['groundspeed'] < $this->maxAircraftGroundspeed) && ($pilot['altitude'] < $this->maxAircraftAltitude)){
            $filteredResults[] = $pilot;
          }
         }
 
       }
       $this->aircraftSearchResults = $filteredResults;
+      return true;
     }
 
     function checkIfAircraftAreOnStand(){
