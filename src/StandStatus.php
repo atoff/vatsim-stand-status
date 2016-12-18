@@ -45,6 +45,7 @@ class StandStatus {
      private $minDistanceFromAirport = 2; // In kilometeres
      private $maxAircraftAltitude = 500; // In feet
      private $maxAircraftGroundspeed = 10; // In knots
+     private $standExtensions = array("L", "C", "R", "A", "B");
 
 
     public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $minAirportDistnace = null) {
@@ -157,7 +158,7 @@ class StandStatus {
       $pilots = $vatsim->getPilots()->toArray();
 
       // INSERT TEST PILOTS
-      //$pilots[] = array('callsign' => "TEST", "latitude" => 52.454294, "longitude" => -1.741505, "altitude" => 0, "groundspeed" => 0);
+      $pilots[] = array('callsign' => "TEST", "latitude" => 55.949228, "longitude" => -3.364303, "altitude" => 0, "groundspeed" => 0, "planned_destairport" => "TEST", "planned_depairport" => "TEST");
 
       if(count($pilots) == 0){
         return false;
@@ -246,9 +247,12 @@ class StandStatus {
           // Get the stand root number
           $standRoot = str_replace("R", "", $standID);
           $standRoot = str_replace("L", "", $standRoot);
+          $standRoot = str_replace("A", "", $standRoot);
+          $standRoot = str_replace("B", "", $standRoot);
           $standRoot = str_replace("C", "", $standRoot);
 
           if(isset($this->stands[$standRoot])){
+            // Stand root is an actual stand
             if(isset($this->stands[$standRoot . "R"])){
               $this->unsetStandOccupied($standRoot . "R");
               unset($this->stands[$standRoot . "R"]);
@@ -257,7 +261,17 @@ class StandStatus {
               $this->unsetStandOccupied($standRoot . "L");
               unset($this->stands[$standRoot . "L"]);
             }
+            if(isset($this->stands[$standRoot . "A"])){
+              $this->unsetStandOccupied($standRoot . "A");
+              unset($this->stands[$standRoot . "A"]);
+            }
+            if(isset($this->stands[$standRoot . "B"])){
+              $this->unsetStandOccupied($standRoot . "B");
+              unset($this->stands[$standRoot . "B"]);
+            }
+
           }else if(isset($this->stands[$standRoot . "C"])){
+            // Stand Root + C (i.e 551C) is an actual stand
             if(isset($this->stands[$standRoot . "R"])){
               $this->unsetStandOccupied($standRoot . "R");
               unset($this->stands[$standRoot . "R"]);
@@ -265,6 +279,14 @@ class StandStatus {
             if(isset($this->stands[$standRoot . "L"])){
               $this->unsetStandOccupied($standRoot . "L");
               unset($this->stands[$standRoot . "L"]);
+            }
+            if(isset($this->stands[$standRoot . "A"])){
+              $this->unsetStandOccupied($standRoot . "A");
+              unset($this->stands[$standRoot . "A"]);
+            }
+            if(isset($this->stands[$standRoot . "B"])){
+              $this->unsetStandOccupied($standRoot . "B");
+              unset($this->stands[$standRoot . "B"]);
             }
           }
         }
@@ -290,6 +312,8 @@ class StandStatus {
       //Find the 'base' stand number
       $standBase = str_replace("R", "", $standID);
       $standBase = str_replace("L", "", $standBase);
+      $standBase = str_replace("A", "", $standBase);
+      $standBase = str_replace("B", "", $standBase);
       $standBase = str_replace("C", "", $standBase);
 
 
@@ -329,8 +353,45 @@ class StandStatus {
             $standSides[] = $newStand;
           }
         }
+      }else if(strstr($standID, "A") || strstr($standID, "B")){
+        // Our stand already is A / B
+
+        if(strstr($standID, "A")){
+          // Set the right hand side to occupied aswell
+          $newStand = str_replace("A", "B", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
+          // Set the base stand to occupied also
+          $newStand = str_replace("A", "", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
+          // Set the center stand to occupied also
+          $newStand = str_replace("A", "C", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
+        }else{
+          // Set the right hand side to occupied aswell
+          $newStand = str_replace("B", "A", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
+          // Set the base stand to occupied also
+          $newStand = str_replace("B", "", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
+          // Set the center stand to occupied also
+          $newStand = str_replace("B", "C", $standID);
+          if(isset($stands[$newStand])){
+            $standSides[] = $newStand;
+          }
+        }
+
       }else{
-        // Stand itself has no side, but may have L / R sides
+        // Stand itself has no side, but may have L / R / A / B sides
         if(isset($stands[$standBase . "L"])){
           $standSides[] = $standBase . "L";
         }
@@ -339,6 +400,12 @@ class StandStatus {
         }
         if(isset($stands[$standBase . "C"])){
           $standSides[] = $standBase . "C";
+        }
+        if(isset($stands[$standBase . "A"])){
+          $standSides[] = $standBase . "A";
+        }
+        if(isset($stands[$standBase . "B"])){
+          $standSides[] = $standBase . "B";
         }
       }
 
