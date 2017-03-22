@@ -25,18 +25,18 @@ class StandStatus {
 
      private $maxStandDistance = 0.07; // In kilometeres
      private $hideStandSidesWhenOccupied = true;
-     private $minDistanceFromAirport = 2; // In kilometeres
+     private $maxDistanceFromAirport = 2; // In kilometeres
      private $maxAircraftAltitude = 3000; // In feet
      private $maxAircraftGroundspeed = 10; // In knots
      private $standExtensions = array("L", "C", "R", "A", "B");
 
 
-    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $minAirportDistnace = null) {
+    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $maxAirportDistnace = null) {
       $this->airportICAO = $airportICAO;
       $this->airportStandsFile = $airportStandsFile;
       $this->airportCoordinates = array("lat" => $airportLatCoordinate, "long" => $airportLongCoordinate);
-      if($minAirportDistnace != null){
-        $this->minDistanceFromAirport = $minAirportDistnace;
+      if($maxAirportDistnace != null){
+        $this->maxDistanceFromAirport = $maxAirportDistnace;
       }
 
       if($this->loadStandsData()){
@@ -153,7 +153,7 @@ class StandStatus {
 
       $filteredResults = array();
       foreach($pilots as $pilot){
-        if(($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->minDistanceFromAirport) ){
+        if(($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->maxDistanceFromAirport) ){
           if(($pilot['groundspeed'] <= $this->maxAircraftGroundspeed) && ($pilot['altitude'] <= $this->maxAircraftAltitude)){
            $filteredResults[] = $pilot;
          }
