@@ -23,7 +23,7 @@ class StandStatus {
       Configuration
      */
 
-     private $minStandDistance = 0.07; // In kilometeres
+     private $maxStandDistance = 0.07; // In kilometeres
      private $hideStandSidesWhenOccupied = true;
      private $minDistanceFromAirport = 2; // In kilometeres
      private $maxAircraftAltitude = 3000; // In feet
@@ -167,7 +167,7 @@ class StandStatus {
     function checkIfAircraftAreOnStand(){
       $pilots = $this->aircraftSearchResults;
       $stands = $this->stands;
-      $standDistanceBoundary = $this->minStandDistance;
+      $standDistanceBoundary = $this->maxStandDistance;
 
       foreach($pilots as $pilot){
 
