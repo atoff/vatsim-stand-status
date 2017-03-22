@@ -126,7 +126,7 @@ Usage
 ```
 foreach ($stand as $StandStatus->allStands())
 {
-	if (isset($stand['occupied'])) {
+    if (isset($stand['occupied'])) {
     	echo "Stand " . $stand['id'] . " is occupied by " . $stand['occupied']['callsign'] . "</br>";
     }else{
     	echo "Stand " . $stand['id'] . " is not occupied </br>";
