@@ -71,11 +71,11 @@ If you would like to code a fix for this, feel free to submit a PR for it :)
 
 In the end, you should have a CSV file that looks something like this:
 
-| id        	| latcoord      | longcoord  |
+| id        	| latcoord      | longcoord  	|
 | ------------- |:-------------:| :----:	|
-| 1 			| 10917.35N 	| 0000953.33W |
-| 2 			| 510915.83N      |   0000952.81W |
-| 3			 	| 510914.31N      |    0000952.28W |
+| 1 		| 10917.35N 	| 0000953.33W 	|
+| 2 		| 510915.83N    | 0000952.81W 	|
+| 3		| 510914.31N    | 0000952.28W 	|	
 
 #### The construction
 
@@ -102,14 +102,16 @@ callsign:cid:realname:clienttype:frequency:latitude:longitude:altitude:groundspe
 __Possible Stand Array Formats__
 
 If a stand is occupied, you are able to fetch the details of the aircraft by accessing the stands "occupied" index (As stands are passed as an array). Here is an example for an occupied stand:
+
 | id        	| latcoord      | longcoord  	| occupied  	|
-| ------------- |:-------------:| :----:		| :----:		| 
-| 1 			| 51.148056 	| -0.190278	| array(...)	|
+| ------------- |:-------------:| :----:	| :----:	| 
+| 1 		| 51.148056 	| -0.190278	| array(...)	|
 
 and a unoccupied stand:
+
 | id        	| latcoord      | longcoord  	|
-| ------------- |:-------------:| :----:		|
-| 1 			| 51.148056 	| -0.190278	|
+| ------------- |:-------------:| :----:	|
+| 1 		| 51.148056 	| -0.190278	|
 #### The use
 
 There are 3 functions to use to gather the various collections of stands from the `$StandStatus` instance:
