@@ -53,7 +53,7 @@ Note: There is no need to manually override this value here, as you can pass a v
      private $standExtensions = array("L", "C", "R", "A", "B");
 ```
 * ___TLDR; Not implemented.___ These letters are possible extensions for 'base' stands. Many airports, such as Gatwick, have stands on the side of a main stand, usually used for aircraft that do not require the full width. For example, stand 53 comprises of 53, 53L and 53R. You can add more extensions here. Not implemented yet, however.
-* 
+
 
 ## Usage
 
