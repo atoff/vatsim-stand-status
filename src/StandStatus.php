@@ -10,23 +10,6 @@ class StandStatus {
     public $aircraftSearchResults;
 
     /*
-     Data Source
-    */
-
-    private $VATSIMDataAPI = "";
-
-    /*
-     Database
-    */
-
-    private $databaseHost = "localhost";
-    private $databaseUser = "root";
-    private $databasePassword = "";
-    private $databaseTable = "";
-
-    public $databaseConnection = null;
-
-    /*
      Airport Stand Details
     */
 
