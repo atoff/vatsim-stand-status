@@ -43,7 +43,7 @@ class StandStatus {
      private $minStandDistance = 0.07; // In kilometeres
      private $hideStandSidesWhenOccupied = true;
      private $minDistanceFromAirport = 2; // In kilometeres
-     private $maxAircraftAltitude = 500; // In feet
+     private $maxAircraftAltitude = 3000; // In feet
      private $maxAircraftGroundspeed = 10; // In knots
      private $standExtensions = array("L", "C", "R", "A", "B");
 
