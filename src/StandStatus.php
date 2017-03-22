@@ -154,7 +154,7 @@ class StandStatus {
       $filteredResults = array();
       foreach($pilots as $pilot){
         if(($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->minDistanceFromAirport) ){
-          if(($pilot['groundspeed'] < $this->maxAircraftGroundspeed) && ($pilot['altitude'] < $this->maxAircraftAltitude)){
+          if(($pilot['groundspeed'] <= $this->maxAircraftGroundspeed) && ($pilot['altitude'] <= $this->maxAircraftAltitude)){
            $filteredResults[] = $pilot;
          }
         }
