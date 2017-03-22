@@ -31,12 +31,12 @@ class StandStatus {
      private $standExtensions = array("L", "C", "R", "A", "B");
 
 
-    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $maxAirportDistnace = null) {
+    public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $maxAirportDistance = null) {
       $this->airportICAO = $airportICAO;
       $this->airportStandsFile = $airportStandsFile;
       $this->airportCoordinates = array("lat" => $airportLatCoordinate, "long" => $airportLongCoordinate);
       if($maxAirportDistnace != null){
-        $this->maxDistanceFromAirport = $maxAirportDistnace;
+        $this->maxDistanceFromAirport = $maxAirportDistance;
       }
 
       if($this->loadStandsData()){
