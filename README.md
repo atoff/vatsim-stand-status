@@ -3,7 +3,7 @@
 ## About
 
 #### Description
-vatsim-stand-status is a fairly lightweight library to allow correlation of aircraft on the VATSIM network with known aircraft stand coordinates. 
+vatsim-stand-status is a fairly lightweight library to allow correlation of aircraft on the VATSIM network with known airport stand coordinates. 
 
 Data is retrieved from the offical VATSIM network data sources through the use of [Skymeyer's Vatsimphp](https://github.com/skymeyer/Vatsimphp) libaray.
 
@@ -31,11 +31,11 @@ The main place where you may (or may not) want to edit the default values is at 
 ```
      private $maxStandDistance = 0.07; // In kilometeres
 ```
-* This is the maxium an aircraft can be from a stand (in km) for that stand to be considered in the search for matching aircraft with stand
+* This is the maximum an aircraft can be from a stand (in km) for that stand to be considered in the search for matching aircraft with stand
 ```
      private $hideStandSidesWhenOccupied = true;
 ```
-* If true, stand sides (such as 42L and 42R) will be hidden when an aircraft occupies the 'base' stand, or a side. I.E if the aircraft is closest to 42, the stands 42L and 42R will be removed from the list of stands
+* If true, stand sides (such as 42L and 42R) will be hidden when an aircraft occupies the 'base' stand, or a side. I.E If the system determines the aircraft is occupying stand 42, the stands 42L and 42R will be removed from the list of stands
 ```
      private $maxDistanceFromAirport = 2; // In kilometeres
 ```
@@ -62,7 +62,7 @@ The CSV file currently has to follow an exact format. A couple of examples of th
 
 The first row is reserved for headers. They should be `id`, `latcoord` and `longcoord` (I have not tested using other headers)
 
-* In the `id` column is the stand name. This can be text, such as "42L", and not just a number.
+* In the `id` column is the stand name. This can be text, such as "42L", and doesn't just have to be a number.
 * In the `latcoord` column as current, you __MUST__ have the weird latitude format the the CAA uses on their stand data documents, as the program is currently hardcoded to convert these into the normal decimal coordinates. (e.g 510917.35N)
 * In the `longcoord` column, just like the `latcoord` column, you __MUST__ have the weird latitude format the the CAA uses on their stand data documents (e.g 0000953.33W)
 ***
@@ -87,8 +87,8 @@ $StandStatus = new StandStatus($airportICAO, $airportStandsFile, $airportLatCoor
 ```
 * `$airportICAO` - The 4 letter airport ICAO code. No real use as of yet.
 * `$airportStandsFile` - The absolute path to the CSV file you should have created.
-* `$airportLatCoordinate` - The decimal-format version of latitude. E.G 51.148056
-* `$airportLongCoordinate` - The decimal-format version of latitude. E.G -0.190278
+* `$airportLatCoordinate` - The decimal-format version of the airports latitude. E.G 51.148056
+* `$airportLongCoordinate` - The decimal-format version of the airports longitude. E.G -0.190278
 * `$maxAirportDistance ` - The maximum distance filtered aircraft can be from the airport coordinates in kilometers.
 
 Here is an example:
@@ -114,10 +114,10 @@ and a unoccupied stand:
 | 1 		| 51.148056 	| -0.190278	|
 #### The use
 
-There are 3 functions to use to gather the various collections of stands from the `$StandStatus` instance:
+There are 3 main functions that you can use from the `$StandStatus` instance:
 
 ___allStands($pageNo = null, $pageLimit = null)___
->This function returns an array of ALL of the possible stands. All proccessed stands from the CSV are returned (with the exception of occupied stand's side stands if enabled). Returns an array of stands.
+>This function returns an array of ALL of the possible stands. All stands from the CSV are returned (with the exception of occupied stand's side stands if enabled), and each stand follows the data format shown under Possible Stand Array Formats. Returns an array of stands.
 
 >If $pageNo and $pageLimit are specified, only $pageLimit ammount of stands will be returned. Useful for pagination
 
