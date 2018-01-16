@@ -12,7 +12,7 @@ Data is retrieved from the offical VATSIM network data sources through the use o
 * PHP 5.3.29 and above (For skymeyer/Vatsimphp)
 
 #### Author
-This package was created by [Alex Toff](http://alex.coblatgrid.com)
+This package was created by [Alex Toff](https://alextoff.uk)
 
 #### License
 vatsim-stand-status is licensed under the GNU General Public License v3.0, which can be found in the root of the package in the `LICENSE` file.
