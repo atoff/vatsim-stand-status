@@ -4,7 +4,7 @@
     "keywords" : ["vatsim", "stand", "stands", "flight simulator"],
     "homepage" : "https://github.com/atoff/vatsim-stand-status",
     "type" : "library",
-    "license" : "GNU GPL V3",
+    "license" : "AGPL-3.0-or-later",
     "authors" : [
       {
         "name" : "Alex Toff",
