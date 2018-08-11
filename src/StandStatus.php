@@ -104,6 +104,7 @@
             if ($this->getAircraftWithinParameters()) {
                 $this->checkIfAircraftAreOnStand();
             }
+			return $this;
         }
 
         // Load the stand data
