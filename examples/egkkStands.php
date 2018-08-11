@@ -6,8 +6,6 @@ require_once '../vendor/autoload.php';
 
 $StandStatus = new StandStatus("EGKK", dirname(__FILE__) . "/standData/egkkstands.csv", 51.148056, -0.190278);
 
-
-
 ?>
 
 <!-- GMaps & Labels -->

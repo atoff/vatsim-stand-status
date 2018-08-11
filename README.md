@@ -25,34 +25,46 @@ $ composer require cobaltgrid/vatsim-stand-status
 ```
 
 ## Configuration
-At the moment, the configuration of the library is  slightly odd, and must be done through editing the main source file, `src/StandStatus.php`.
+You can configure various variables using the setters in the `StandStatus` class file. Once changing one (or many) of these values, you must run `$StandStatus->parseData()` so that the data is reloaded with the new settings. To be more efficient, set the `$parseData` argument in the constructor to false, set your new config settings, and then parse the data. Note: the setters here all return the class instance, so you can chain them together.
 
-The main place where you may (or may not) want to edit the default values is at around Lines 26-31:
+
 ```
      private $maxStandDistance = 0.07; // In kilometeres
 ```
 * This is the maximum an aircraft can be from a stand (in km) for that stand to be considered in the search for matching aircraft with stand
+* Getter: `$StandStatus->getMaxStandDistance()`
+* Setter: `$StandStatus->setMaxStandDistance($distance)`
 ```
      private $hideStandSidesWhenOccupied = true;
 ```
 * If true, stand sides (such as 42L and 42R) will be hidden when an aircraft occupies the 'base' stand, or a side. I.E If the system determines the aircraft is occupying stand 42, the stands 42L and 42R will be removed from the list of stands
+* Getter: `$StandStatus->getHideStandSidesWhenOccupied()`
+* Setter: `$StandStatus->setHideStandSidesWhenOccupied($bool)`
 ```
      private $maxDistanceFromAirport = 2; // In kilometeres
 ```
 Note: There is no need to manually override this value here, as you can pass a value to the constructor instead.
 * This is one of the first checks used to filter down the global VATSIM pilots into possible pilots. Aircraft that are within this distance from the defined center of the airport will be used in later filtering.
+* Getter: `$StandStatus->getMaxDistanceFromAirport()`
+* Setter: `$StandStatus->setMaxDistanceFromAirport($distance)`
 ```
      private $maxAircraftAltitude = 3000; // In feet
 ```
 * This value is used in a check that ensures that possible aircraft are at or below this altitude.
+* Getter: `$StandStatus->getMaxAircraftAltitude()`
+* Setter: `$StandStatus->setMaxAircraftAltitude($altitude)`
 ```
      private $maxAircraftGroundspeed = 10; // In knots
 ```
 * This value is used in a check that ensures that possible aircraft are at or below this ground speed.
+* Getter: `$StandStatus->getMaxAircraftGroundspeed()`
+* Setter: `$StandStatus->setMaxAircraftGroundspeed($speed)`
 ```
      private $standExtensions = array("L", "C", "R", "A", "B");
 ```
 * ___TLDR; Not implemented.___ These letters are possible extensions for 'base' stands. Many airports, such as Gatwick, have stands on the side of a main stand, usually used for aircraft that do not require the full width. For example, stand 53 comprises of 53, 53L and 53R. You can add more extensions here. Not implemented yet, however.
+* Getter: `$StandStatus->getStandExtensions()`
+* Setter: `$StandStatus->setStandExtensions($standArray)`
 
 
 ## Usage
@@ -83,12 +95,13 @@ The library is used by first (a) using the composer class autoloader and then 'u
 
 Then, an instance of the class must be made:
 ```
-$StandStatus = new StandStatus($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $minAirportDistnace = null);
+$StandStatus = new StandStatus($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $parseData = true, $minAirportDistance = null);
 ```
 * `$airportICAO` - The 4 letter airport ICAO code. No real use as of yet.
 * `$airportStandsFile` - The absolute path to the CSV file you should have created.
 * `$airportLatCoordinate` - The decimal-format version of the airports latitude. E.G 51.148056
 * `$airportLongCoordinate` - The decimal-format version of the airports longitude. E.G -0.190278
+* `$parseData` - Boolean. Sets whether or not the data should be parsed immediately. Set to false when you plan on changing the default variables in "Configuration"
 * `$maxAirportDistance ` - The maximum distance filtered aircraft can be from the airport coordinates in kilometers.
 
 Here is an example:
