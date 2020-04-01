@@ -166,7 +166,7 @@
             }
 
 
-            $filteredResults = ;
+            $filteredResults = [];
             foreach ($pilots as $pilot) {
                 if (($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->maxDistanceFromAirport)) {
                     if (($pilot['groundspeed'] <= $this->maxAircraftGroundspeed) && ($pilot['altitude'] <= $this->maxAircraftAltitude)) {
@@ -188,7 +188,7 @@
             foreach ($pilots as $pilot) {
 
                 // Array to hold the stands they could possibly be on
-                $possibleStands = ;
+                $possibleStands = [];
 
                 // Check each stand to see how close they are
                 foreach ($stands as $stand) {
@@ -309,7 +309,7 @@
 
         function standSides($standID)
         {
-            $standSides = ;
+            $standSides = [];
             $stands = $this->stands;
 
             //Find the 'base' stand number
