@@ -6,9 +6,9 @@
     class StandStatus
     {
 
-        public $stands = array();
-        public $occupiedStands = array();
-        public $aircraftSearchResults;
+        public $stands = [];
+        public $occupiedStands = [];
+        public $aircraftSearchResults = [];
 
         /*
          Airport Stand Details
@@ -89,7 +89,7 @@
         {
             // Work out the ammount of pages
             $noOfPages = ceil(count($this->stands) / $pageLimit);
-            $pageinationArray = array();
+            $pageinationArray = [];
             for ($i = 0; $i < $noOfPages; $i++) {
                 $pageinationArray[] = $this->allStands($i, $pageLimit);
             }
@@ -110,7 +110,7 @@
         // Load the stand data
         function loadStandsData()
         {
-            $array = $fields = array();
+            $array = $fields = [];
             $i = 0;
             $handle = @fopen($this->airportStandsFile, "r");
             if ($handle) {
@@ -149,7 +149,11 @@
             $vatsim = new VatsimData();
             $vatsim->loadData();
 
-            $pilots = $vatsim->getPilots()->toArray();
+            try {
+                $pilots = $vatsim->getPilots()->toArray();
+            }catch (Exception $e){
+                return false;
+            }
 
             // INSERT TEST PILOTS
             //$pilots[] = array('callsign' => "TEST", "latitude" => 55.949228, "longitude" => -3.364303, "altitude" => 0, "groundspeed" => 0, "planned_destairport" => "TEST", "planned_depairport" => "TEST");
@@ -162,7 +166,7 @@
             }
 
 
-            $filteredResults = array();
+            $filteredResults = ;
             foreach ($pilots as $pilot) {
                 if (($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->maxDistanceFromAirport)) {
                     if (($pilot['groundspeed'] <= $this->maxAircraftGroundspeed) && ($pilot['altitude'] <= $this->maxAircraftAltitude)) {
@@ -184,7 +188,7 @@
             foreach ($pilots as $pilot) {
 
                 // Array to hold the stands they could possibly be on
-                $possibleStands = array();
+                $possibleStands = ;
 
                 // Check each stand to see how close they are
                 foreach ($stands as $stand) {
@@ -305,7 +309,7 @@
 
         function standSides($standID)
         {
-            $standSides = array();
+            $standSides = ;
             $stands = $this->stands;
 
             //Find the 'base' stand number
