@@ -13,7 +13,7 @@
       }
     ],
     "require": {
-        "skymeyer/vatsimphp": "1.0.*"
+        "skymeyer/vatsimphp": "^2.0"
     },
     "autoload": {
         "psr-4": {
