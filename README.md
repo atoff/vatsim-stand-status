@@ -91,7 +91,12 @@ In the end, you should have a CSV file that looks something like this:
 
 #### The construction
 
-The library is used by first (a) using the composer class autoloader and then 'using' the class `use CobaltGrid\VatsimStandStatus\StandStatus;` or (b) using require/include to import the class into the current file `require_once('...../src/StandStatus.php')`
+The best way to use this library is by using Composer Autoloader:
+```
+     require('./vendor/autoload.php');
+     use CobaltGrid\VatsimStandStatus\StandStatus;
+```
+
 
 Then, an instance of the class must be made:
 ```
@@ -106,7 +111,7 @@ $StandStatus = new StandStatus($airportICAO, $airportStandsFile, $airportLatCoor
 
 Here is an example:
 
-`$StandStatus = new StandStatus("EGKK", dirname(__FILE__) . "/standData/egkkstands.csv", 51.148056, -0.190278, 3);`
+`$StandStatus = new StandStatus("EGKK", dirname(__FILE__) . "/standData/egkkstands.csv", 51.148056, -0.190278, true, 3);`
 
 Once this step has done, the data file is downloaded and processed, and stands with aircraft close enough to them, and that fit within the requirements, are marked as occupied by the associated aircraft. All of the aircraft's data is assigned to the stand, allowing you to access many variables from the network data:
 ```
