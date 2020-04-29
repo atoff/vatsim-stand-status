@@ -31,7 +31,9 @@ class StandStatus
      Supported Coordinate Formats
     */
 
+
     const COORD_FORMAT_DECIMAL = 1;
+    // Coordinates of format 521756.91N
     const COORD_FORMAT_CAA = 2;
 
     /*
@@ -56,8 +58,8 @@ class StandStatus
     private $maxAircraftAltitude = 3000; // In feet
     private $maxAircraftGroundspeed = 10; // In knots
 
-    private $standExtensions = ["L", "C", "R", "A", "B"]; // Possible stand extensions/combinations. E.G Stand 25 includes 25L and 25R
-    private $standExtensionPattern = '<standroot><extensions>'; // Use <extensions> to determine where to insert the extensions, and <standroot> to represent the stand number
+    private $standExtensions = ["L", "C", "R", "A", "B", "N", "E", "S", "W"]; // Possible stand extensions/combinations. E.G Stand 25 includes 25L and 25R
+    private $standExtensionPattern = '<standroot><extensions>'; // Use <extensions> to determine where to insert the extensions, and <standroot> to represent the stand number. Can only use one of each
     private $standCoordinateFormat = self::COORD_FORMAT_DECIMAL; // Stand Data file coordinate type
 
 
@@ -144,7 +146,7 @@ class StandStatus
      */
     private function loadStandData()
     {
-        $standDataStream = fopen($this->airportStandsFile, "r");
+        $standDataStream = @fopen($this->airportStandsFile, "r");
 
         if (!$standDataStream) {
             throw new UnableToLoadStandDataFileException("Unable to load the stand data file located at path '{$this->airportStandsFile}'");
@@ -170,11 +172,12 @@ class StandStatus
             }
 
             $this->validateCoordinatePairOrFail($latitude, $longitude);
-            $stand = new Stand($name, $latitude, $longitude);
-            if (isset($this->stands[$stand->getIndex()])) {
-                throw new UnableToParseStandDataException("A stand ID was defined twice in the data file! Stand ID: {$stand->getIndex()}");
+            $stand = new Stand($name, $latitude, $longitude, $this->standExtensions, $this->standExtensionPattern);
+
+            if (isset($this->stands[$stand->getKey()])) {
+                throw new UnableToParseStandDataException("A stand ID was defined twice in the data file! Stand ID: {$stand->getKey()}");
             }
-            $this->stands[$stand->getIndex()] = $stand;
+            $this->stands[$stand->getKey()] = $stand;
         }
 
         fclose($standDataStream);
@@ -186,7 +189,7 @@ class StandStatus
      *
      * @return array
      */
-    private function getVATSIMPilots()
+    public function getVATSIMPilots()
     {
         $vatsimData = new VatsimData();
 
@@ -206,9 +209,6 @@ class StandStatus
      */
     private function getAircraftWithinParameters(array $pilots)
     {
-        // INSERT TEST PILOTS IF NEEDED
-        //$pilots[] = array('callsign' => "TEST", "latitude" => 55.949228, "longitude" => -3.364303, "altitude" => 0, "groundspeed" => 0, "planned_destairport" => "TEST", "planned_depairport" => "TEST");
-
         if (count($pilots) == 0 || (($this->airportLatitude == null) || ($this->airportLongitude == null))) {
             return false;
         }
@@ -275,7 +275,7 @@ class StandStatus
      */
     private function setStandOccupied(Stand $stand, Aircraft $aircraft)
     {
-        $this->stands[$stand->getIndex()]->setOccupier($aircraft);
+        $this->stands[$stand->getKey()]->setOccupier($aircraft);
     }
 
     /**
@@ -288,7 +288,7 @@ class StandStatus
     {
         // Firstly set the actual stand as occupied
         $this->setStandOccupied($stand, $aircraft);
-        $aircraft->setStandIndex($stand->getIndex());
+        $aircraft->setStandIndex($stand->getKey());
 
         // Get complementary stands
         $standSides = $this->complementaryStands($stand);
@@ -296,7 +296,7 @@ class StandStatus
 
             foreach ($standSides as $stand) {
                 if ($this->hideStandSidesWhenOccupied) {
-                    unset($this->stands[$stand->getIndex()]);
+                    unset($this->stands[$stand->getKey()]);
                     continue;
                 }
 
@@ -313,7 +313,7 @@ class StandStatus
      */
     private function complementaryStands(Stand $stand)
     {
-        $root = $stand->getRoot($this->generateExtensionRegex());
+        $root = $stand->getRoot();
         $stands = [];
 
         foreach (array_merge([''], $this->standExtensions) as $extension) {
@@ -323,19 +323,6 @@ class StandStatus
         }
 
         return count($stands) > 0 ? $stands : null;
-    }
-
-    /**
-     * Generates the regex to capture a stand's extension
-     *
-     * @return string
-     */
-    private function generateExtensionRegex()
-    {
-        // Compose regex
-        $extensions = "(" . implode('|', $this->standExtensions) . ")";
-        $pattern = '/^' . $this->standExtensionPattern . '$/';
-        return str_replace(['<standroot>', '<extensions>'], ['[0-9]+', $extensions], $pattern);
     }
 
 

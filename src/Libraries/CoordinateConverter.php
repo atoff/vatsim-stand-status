@@ -18,14 +18,19 @@ abstract class CoordinateConverter
     /**
      * Converts Degrees, minutes and seconds into a decimal format coordinate
      *
-     * @param int $degrees
-     * @param int $minutes
-     * @param int $seconds
+     * @param float $degrees
+     * @param float $minutes
+     * @param float $seconds
      * @param bool|null $negative
      * @return float|int
      */
     protected function convertDMSToDecimal($degrees, $minutes, $seconds, $negative = null)
     {
+        // Casts
+        $degrees = floatval($degrees);
+        $minutes = floatval($minutes);
+        $seconds = floatval($seconds);
+
         // Deduce sign if not given
         if(!$negative){
             // Find sign from the sign of the degrees integer. If positive, assume East / North
