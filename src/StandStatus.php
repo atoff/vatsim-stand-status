@@ -58,7 +58,7 @@ class StandStatus
     private $maxAircraftAltitude = 3000; // In feet
     private $maxAircraftGroundspeed = 10; // In knots
 
-    private $standExtensions = ["L", "C", "R", "A", "B", "N", "E", "S", "W"]; // Possible stand extensions/combinations. E.G Stand 25 includes 25L and 25R
+    private $standExtensions = ['L', 'C', 'R', 'A', 'B', 'N', 'E', 'S', 'W']; // Possible stand extensions/combinations. E.G Stand 25 includes 25L and 25R
     private $standExtensionPattern = '<standroot><extensions>'; // Use <extensions> to determine where to insert the extensions, and <standroot> to represent the stand number. Can only use one of each
     private $standCoordinateFormat = self::COORD_FORMAT_DECIMAL; // Stand Data file coordinate type
 
@@ -525,6 +525,24 @@ class StandStatus
     public function setStandExtensions($standArray)
     {
         $this->standExtensions = $standArray;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getStandExtensionPattern()
+    {
+        return $this->standExtensionPattern;
+    }
+
+    /**
+     * @param string $standExtensionPattern
+     * @return StandStatus
+     */
+    public function setStandExtensionPattern(string $standExtensionPattern)
+    {
+        $this->standExtensionPattern = $standExtensionPattern;
         return $this;
     }
 
