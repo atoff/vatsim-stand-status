@@ -5,19 +5,19 @@
 ## About
 
 #### Description
-vatsim-stand-status is a fairly lightweight library to allow correlation of aircraft on the VATSIM network with known airport stand coordinates. 
+vatsim-stand-status is a lightweight PHP library to allow the correlation between aircraft on the VATSIM flight simulation network, and an airport stand.
 
-Data is retrieved from the offical VATSIM network data sources through the use of [Skymeyer's Vatsimphp](https://github.com/skymeyer/Vatsimphp) libaray.
+VATSIM network data is downloaded and parsed by [Skymeyer's Vatsimphp](https://github.com/skymeyer/Vatsimphp) library.
 
 
 #### Requirements
-* PHP 5.3.29 and above (For skymeyer/Vatsimphp)
+* PHP 7.2 and above
 
 #### Author
 This package was created by [Alex Toff](https://alextoff.uk)
 
 #### License
-vatsim-stand-status is licensed under the GNU General Public License v3.0, which can be found in the root of the package in the `LICENSE` file.
+`vatsim-stand-status` is licensed under the GNU General Public License v3.0, which can be found in the root of the package in the `LICENSE` file.
 
 ## Installation
 

@@ -4,7 +4,7 @@ use CobaltGrid\VatsimStandStatus\StandStatus;
 
 require_once '../vendor/autoload.php';
 
-$StandStatus = new StandStatus(dirname(__FILE__) . "../tests/Fixtures/SampleData/egkkstands.csv", 51.148056, -0.190278, null, StandStatus::COORD_FORMAT_CAA);
+$StandStatus = new StandStatus(dirname(__FILE__) . "/../tests/Fixtures/SampleData/egkkstands.csv", 51.148056, -0.190278, null, StandStatus::COORD_FORMAT_CAA);
 ?>
 
 <html>
