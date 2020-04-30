@@ -80,6 +80,14 @@ class StandTest extends TestCase
         $this->assertEquals('73', $stand3->getRoot());
     }
 
+    public function testItFailsGracefullyIfNoMatches()
+    {
+        $stand = new Stand('144R', $this->standLatitude, $this->standLongitude, $this->standExtensions, '');
+
+        $this->assertNull($stand->getRoot());
+        $this->assertNull($stand->getExtension());
+    }
+
     public function testItCanDetermineExtension()
     {
         $stand2 = new Stand('144', $this->standLatitude, $this->standLongitude, $this->standExtensions, $this->standPattern);

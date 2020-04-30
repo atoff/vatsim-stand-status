@@ -4,6 +4,7 @@
 namespace Tests\Unit;
 
 use CobaltGrid\VatsimStandStatus\Aircraft;
+use CobaltGrid\VatsimStandStatus\Stand;
 use Tests\TestCase;
 
 class AircraftTest extends TestCase
@@ -28,6 +29,13 @@ class AircraftTest extends TestCase
         $this->assertNull($this->instance->getStandIndex());
         $this->instance->setStandIndex('21R');
         $this->assertEquals('21R', $this->instance->getStandIndex());
+    }
+
+    public function testItCanGetStandFromStands()
+    {
+        $this->instance->setStandIndex('21R');
+        $stand = new Stand('21R', 1, 1, ['L'], '');
+        $this->assertEquals($stand, $this->instance->getStand(['21R' => $stand]));
     }
 
     public function testItCorrectlyReportsIfOnStand()

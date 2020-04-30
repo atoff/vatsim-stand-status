@@ -32,7 +32,7 @@ abstract class CoordinateConverter
         $seconds = floatval($seconds);
 
         // Deduce sign if not given
-        if(!$negative){
+        if($negative == null){
             // Find sign from the sign of the degrees integer. If positive, assume East / North
             if($degrees >= 0){
                 $negative = false;
@@ -42,7 +42,7 @@ abstract class CoordinateConverter
         }
 
         // Converting DMS ( Degrees / minutes / seconds ) to decimal format
-        $float = $degrees + ((($minutes * 60) + ($seconds)) / 3600);
+        $float = abs($degrees) + ((($minutes * 60) + ($seconds)) / 3600);
         return $negative ? -1 * $float : $float;
     }
 

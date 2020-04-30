@@ -1,5 +1,7 @@
 # vatsim-stand-status
 
+![Stand Status CI](https://github.com/atoff/vatsim-stand-status/workflows/Stand%20Status%20CI/badge.svg)
+
 ## About
 
 #### Description

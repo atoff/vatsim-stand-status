@@ -76,7 +76,13 @@ class StandStatus
      * @throws UnableToLoadStandDataFileException
      * @throws UnableToParseStandDataException
      */
-    public function __construct($standDataPath, $airportLatitude, $airportLongitude, $maxAirportDistance = null, $standCoordinateFormat = self::COORD_FORMAT_DECIMAL, $parseData = true)
+    public function __construct(
+        $standDataPath,
+        $airportLatitude,
+        $airportLongitude,
+        $maxAirportDistance = null,
+        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL,
+        $parseData = true)
     {
         $this->airportStandsFile = $standDataPath;
         $this->airportLatitude = $airportLatitude;
@@ -87,9 +93,7 @@ class StandStatus
         if ($maxAirportDistance) $this->maxDistanceFromAirport = $maxAirportDistance;
 
         // Load stand data into memory and parse if allowed
-        if ($this->loadStandData() && $parseData) {
-            $this->parseData();
-        }
+        if ($this->loadStandData() && $parseData) $this->parseData();
     }
 
     /**
@@ -100,7 +104,8 @@ class StandStatus
     public function parseData()
     {
         $this->occupiedStandsCache = null;
-        $pilots = $this->getVATSIMPilots();
+        $vatsimData = new VatsimData();
+        $pilots = $this->getVATSIMPilots($vatsimData);
         if ($pilots && $this->getAircraftWithinParameters($pilots)) {
             $this->checkIfAircraftAreOnStand();
         }
@@ -111,27 +116,47 @@ class StandStatus
      * Useful functions
      */
 
+    /**
+     * Returns a list of all the stands (minus hidden side stands if enabled)
+     *
+     * @return Stand[]
+     */
     public function allStands()
     {
         return $this->stands;
     }
 
-    public function occupiedStands()
+    /**
+     * Returns a list of all occupied stands
+     *
+     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
+     * @return Stand[]
+     */
+    public function occupiedStands($assoc = false)
     {
-        if ($this->occupiedStandsCache) return $this->occupiedStandsCache;
+        if (!$this->occupiedStandsCache) {
+            $this->occupiedStandsCache = array_filter($this->stands, function (Stand $stand) {
+                return $stand->isOccupied();
+            });
+        }
 
-        return $this->occupiedStandsCache = array_filter($this->stands, function (Stand $stand) {
-            return $stand->isOccupied();
-        });
+        return $assoc ? $this->occupiedStandsCache : array_values($this->occupiedStandsCache);
     }
-
-    public function unoccupiedStands()
+    /**
+     * Returns a list of all unoccupied stands
+     *
+     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
+     * @return Stand[]
+     */
+    public function unoccupiedStands($assoc = false)
     {
-        if ($this->unoccupiedStandsCache) return $this->unoccupiedStandsCache;
+        if (!$this->unoccupiedStandsCache) {
+            $this->unoccupiedStandsCache = array_filter($this->stands, function (Stand $stand) {
+                return !$stand->isOccupied();
+            });
+        }
 
-        return $this->unoccupiedStandsCache = array_filter($this->stands, function (Stand $stand) {
-            return !$stand->isOccupied();
-        });
+        return $assoc ? $this->unoccupiedStandsCache : array_values($this->unoccupiedStandsCache);
     }
 
     /*
@@ -187,12 +212,11 @@ class StandStatus
     /**
      * Returns an array of pilots from the VATSIM data feed
      *
+     * @param VatsimData $vatsimData
      * @return array
      */
-    public function getVATSIMPilots()
+    public function getVATSIMPilots(VatsimData $vatsimData)
     {
-        $vatsimData = new VatsimData();
-
         if (!$vatsimData->loadData()) {
             // VATSIM data file is down.
             return null;
@@ -209,10 +233,6 @@ class StandStatus
      */
     private function getAircraftWithinParameters(array $pilots)
     {
-        if (count($pilots) == 0 || (($this->airportLatitude == null) || ($this->airportLongitude == null))) {
-            return false;
-        }
-
         $filteredAircraft = [];
         foreach ($pilots as $pilot) {
             $aircraft = new Aircraft($pilot);
