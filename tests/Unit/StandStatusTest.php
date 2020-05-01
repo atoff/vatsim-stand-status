@@ -6,6 +6,7 @@ namespace Tests\Unit;
 use CobaltGrid\VatsimStandStatus\Aircraft;
 use CobaltGrid\VatsimStandStatus\Exceptions\CoordinateOutOfBoundsException;
 use CobaltGrid\VatsimStandStatus\Exceptions\InvalidStandException;
+use CobaltGrid\VatsimStandStatus\Exceptions\NoStandDataException;
 use CobaltGrid\VatsimStandStatus\Exceptions\UnableToLoadStandDataFileException;
 use CobaltGrid\VatsimStandStatus\Exceptions\UnableToParseStandDataException;
 use CobaltGrid\VatsimStandStatus\Stand;
@@ -69,28 +70,46 @@ class StandStatusTest extends TestCase
         $this->standDataFileInvalid = dirname(__DIR__)."/Fixtures/SampleData/invalidexample.csv";
 
         $this->instance = \Mockery::mock(StandStatus::class, [
-            $this->standDataFileCAA,
             51.148056,
             -0.190278,
-            null,
             StandStatus::COORD_FORMAT_CAA,
-            false
         ])->makePartial();
+        $this->instance->loadStandDataFromCSV($this->standDataFileCAA);
         $this->instance->shouldReceive('getVATSIMPilots')->andReturn($this->testPilots);
+        $this->instance->parseData();
     }
 
-    public function testItCanParseAutomatically()
+    public function testItRefreshesAssignmentsWhenParsedAgain()
+    {
+        $this->instance = \Mockery::mock(StandStatus::class, [
+            51.148056,
+            -0.190278,
+            StandStatus::COORD_FORMAT_CAA,
+        ])->makePartial();
+        $this->instance->shouldReceive('getVATSIMPilots')->andReturn($this->testPilots, array_slice($this->testPilots, 0, 3));
+        $this->instance->loadStandDataFromCSV($this->standDataFileCAA)->parseData();
+
+        $this->assertTrue($this->instance->stands(true)['43N']->isOccupied());
+        $this->assertTrue($this->instance->allStands(true)['43W']->isOccupied());
+        $this->assertFalse(isset($this->instance->stands(true)['43W']));
+
+        $this->instance->parseData();
+
+        $this->assertFalse($this->instance->stands(true)['43N']->isOccupied());
+        $this->assertFalse($this->instance->allStands(true)['43W']->isOccupied());
+        $this->assertTrue(isset($this->instance->stands(true)['43W']));
+    }
+
+    public function testItCanParseDecimalFormat()
     {
         $mock = \Mockery::mock(StandStatus::class)->makePartial();
         $mock->shouldReceive('getVATSIMPilots')->andReturn($this->testPilots);
         $mock->shouldReceive('parseData')->once();
         $mock->__construct(
-            $this->standDataFileCAA,
             51.148056,
-            -0.190278,
-            null,
-            StandStatus::COORD_FORMAT_CAA
+            -0.190278
         );
+        $mock->loadStandDataFromCSV($this->standDataFileDecimal)->parseData();
     }
 
     public function testItThrowsWithInvalidCoordinates()
@@ -101,20 +120,39 @@ class StandStatusTest extends TestCase
 
     public function testItThrowsIfItCantFindStandDataFile()
     {
+        $instance = $this->createNewInstance();
         $this->expectException(UnableToLoadStandDataFileException::class);
-        new StandStatus('', 0.1, 0.1);
+        $instance->loadStandDataFromCSV('');
     }
 
     public function testItThrowsIfItDataFileContentInvalid()
     {
+        $instance = $this->createNewInstance();
         $this->expectException(UnableToParseStandDataException::class);
-        new StandStatus($this->standDataFileInvalid, 0.1, 0.1);
+        $instance->loadStandDataFromCSV($this->standDataFileInvalid);
+    }
+
+    public function testItThrowsIfNoStandDataLoaded()
+    {
+        $instance = $this->createNewInstance();
+        $this->expectException(NoStandDataException::class);
+        $instance->parseData();
+    }
+
+    public function testItCanLoadFromArray()
+    {
+        $this->instance->loadStandDataFromArray([
+            ['1','510917.35N','0000953.33W'],
+            ['2','510915.83N','0000952.81W'],
+            ['3','510914.31N','0000952.28W']
+        ]);
+        $this->assertCount(3, $this->instance->stands());
     }
 
     public function testItParsesOk()
     {
         $this->instance->setHideStandSidesWhenOccupied(false)->parseData();
-        $this->assertCount(186, $this->instance->allStands());
+        $this->assertCount(186, $this->instance->stands());
     }
 
     public function testItCanGetVATSIMPilots()
@@ -138,39 +176,25 @@ class StandStatusTest extends TestCase
 
     public function testItFiltersPilotsCorrectly()
     {
-        $this->instance->parseData();
         $this->assertEquals(['TEST1', 'TEST2', 'TEST5'], array_map(function(Aircraft $aircraft){
             return $aircraft->callsign;
         }, $this->instance->getAllAircraft()));
     }
-
-//    /** @only */
-//    public function testItReturnsEmptyIfNoMatchesForAircraftSearch()
-//    {
-//        $instance = \Mockery::mock(StandStatus::class, [
-//            $this->standDataFileCAA,
-//            51.148056,
-//            -0.190278,
-//            null,
-//            StandStatus::COORD_FORMAT_CAA,
-//            false
-//        ])->makePartial();
-//        $instance->shouldReceive('getVATSIMPilots')->andReturn([]);
-//        $instance->parseData();
-//        $this->assertEmpty($instance->getAllAircraft());
-//    }
-
     public function testItAssignsStandsCorrectly()
     {
-        $this->instance->parseData();
         $this->assertNull($this->instance->getAllAircraft()[0]->getStandIndex());
         $this->assertNull($this->instance->getAllAircraft()[1]->getStandIndex());
         $this->assertEquals('43N', $this->instance->getAllAircraft()[2]->getStandIndex());
     }
 
+    public function testItReturnsListOfStandsAndAllStands()
+    {
+        $this->assertCount(186, $this->instance->allStands());
+        $this->assertCount(183, $this->instance->stands());
+    }
+
     public function testItReturnsListOfOccupiedStands()
     {
-        $this->instance->parseData();
         $this->assertCount(1, $this->instance->occupiedStands());
         $this->assertEquals('TEST5', $this->instance->occupiedStands()[0]->occupier->callsign);
         $this->assertEquals('TEST5', $this->instance->occupiedStands(true)['43N']->occupier->callsign);
@@ -178,7 +202,6 @@ class StandStatusTest extends TestCase
 
     public function testItReturnsListOfUnoccupiedStands()
     {
-        $this->instance->parseData();
         // 186 stands, 1 occupied which includes 3 side stands = 183
         $this->assertCount(182, $this->instance->unoccupiedStands());
         $this->assertNull($this->instance->unoccupiedStands()[0]->occupier);
@@ -206,16 +229,16 @@ class StandStatusTest extends TestCase
 
         $this->assertInstanceOf(StandStatus::class, $instance->setStandExtensions(['A', 'B', 'C']));
         $this->assertEquals(['A', 'B', 'C'], $instance->getStandExtensions());
+
+        $this->assertInstanceOf(StandStatus::class, $instance->setStandExtensionPattern('<extensions><standroo>'));
+        $this->assertEquals('<extensions><standroo>', $instance->getStandExtensionPattern());
     }
 
     private function createNewInstance()
     {
         return new StandStatus(
-            $this->standDataFileCAA,
             51.148056,
             -0.190278,
-            null,
-            StandStatus::COORD_FORMAT_CAA,
-            false);
+            StandStatus::COORD_FORMAT_CAA);
     }
 }

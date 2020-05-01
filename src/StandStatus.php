@@ -3,6 +3,7 @@
 namespace CobaltGrid\VatsimStandStatus;
 
 use CobaltGrid\VatsimStandStatus\Exceptions\CoordinateOutOfBoundsException;
+use CobaltGrid\VatsimStandStatus\Exceptions\NoStandDataException;
 use CobaltGrid\VatsimStandStatus\Exceptions\UnableToLoadStandDataFileException;
 use CobaltGrid\VatsimStandStatus\Exceptions\UnableToParseStandDataException;
 use CobaltGrid\VatsimStandStatus\Libraries\CAACoordinateConverter;
@@ -47,7 +48,6 @@ class StandStatus
      * @var float
      */
     private $airportLongitude;
-    private $airportStandsFile;
 
     /*
       Configuration Defaults
@@ -65,116 +65,40 @@ class StandStatus
 
     /**
      * StandStatus constructor.
-     * @param string $standDataPath The absolute path to the stand data CSV file
      * @param float $airportLatitude The decimal-format latitude of the airport
      * @param float $airportLongitude The decimal-format longitude of the airport
-     * @param int|float $maxAirportDistance The maximum distance, in kilometers, to consider aircraft at the airport
      * @param int $standCoordinateFormat The format of the coordinates in the stand data file. Defaults to decimal.
-     * @param bool $parseData Whether to parse the data file automatically after construction
+     * @throws CoordinateOutOfBoundsException
+     */
+    public function __construct(
+        $airportLatitude,
+        $airportLongitude,
+        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL)
+    {
+        $this->airportLatitude = $airportLatitude;
+        $this->airportLongitude = $airportLongitude;
+        if ($standCoordinateFormat) $this->standCoordinateFormat = $standCoordinateFormat;
+        $this->validateCoordinatePairOrFail($airportLatitude, $airportLongitude);
+    }
+
+    /**
+     * Loads and parse's stand data from the stand data csv file
+     *
+     * @param string $filePath Path to the Stand Data CSV file
+     * @return StandStatus
      * @throws CoordinateOutOfBoundsException
      * @throws Exceptions\InvalidStandException
      * @throws UnableToLoadStandDataFileException
      * @throws UnableToParseStandDataException
      */
-    public function __construct(
-        $standDataPath,
-        $airportLatitude,
-        $airportLongitude,
-        $maxAirportDistance = null,
-        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL,
-        $parseData = true)
+    public function loadStandDataFromCSV(string $filePath)
     {
-        $this->airportStandsFile = $standDataPath;
-        $this->airportLatitude = $airportLatitude;
-        $this->airportLongitude = $airportLongitude;
-        if ($standCoordinateFormat) $this->standCoordinateFormat = $standCoordinateFormat;
-        $this->validateCoordinatePairOrFail($airportLatitude, $airportLongitude);
+        $this->stands = [];
 
-        if ($maxAirportDistance) $this->maxDistanceFromAirport = $maxAirportDistance;
-
-        // Load stand data into memory and parse if allowed
-        if ($this->loadStandData() && $parseData) $this->parseData();
-    }
-
-    /**
-     * Fetches VATSIM pilot data, and runs stand assignment algorithm
-     *
-     * @return $this
-     */
-    public function parseData()
-    {
-        $this->occupiedStandsCache = null;
-        $vatsimData = new VatsimData();
-        $pilots = $this->getVATSIMPilots($vatsimData);
-        if ($pilots && $this->getAircraftWithinParameters($pilots)) {
-            $this->checkIfAircraftAreOnStand();
-        }
-        return $this;
-    }
-
-    /*
-     * Useful functions
-     */
-
-    /**
-     * Returns a list of all the stands (minus hidden side stands if enabled)
-     *
-     * @return Stand[]
-     */
-    public function allStands()
-    {
-        return $this->stands;
-    }
-
-    /**
-     * Returns a list of all occupied stands
-     *
-     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
-     * @return Stand[]
-     */
-    public function occupiedStands($assoc = false)
-    {
-        if (!$this->occupiedStandsCache) {
-            $this->occupiedStandsCache = array_filter($this->stands, function (Stand $stand) {
-                return $stand->isOccupied();
-            });
-        }
-
-        return $assoc ? $this->occupiedStandsCache : array_values($this->occupiedStandsCache);
-    }
-    /**
-     * Returns a list of all unoccupied stands
-     *
-     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
-     * @return Stand[]
-     */
-    public function unoccupiedStands($assoc = false)
-    {
-        if (!$this->unoccupiedStandsCache) {
-            $this->unoccupiedStandsCache = array_filter($this->stands, function (Stand $stand) {
-                return !$stand->isOccupied();
-            });
-        }
-
-        return $assoc ? $this->unoccupiedStandsCache : array_values($this->unoccupiedStandsCache);
-    }
-
-    /*
-     * Internal Processing Function
-     */
-
-    /**
-     * Loads and parse's stand data from the stand data file
-     * @return bool
-     * @throws UnableToParseStandDataException
-     * @throws CoordinateOutOfBoundsException|Exceptions\InvalidStandException|UnableToLoadStandDataFileException
-     */
-    private function loadStandData()
-    {
-        $standDataStream = @fopen($this->airportStandsFile, "r");
+        $standDataStream = @fopen($filePath, "r");
 
         if (!$standDataStream) {
-            throw new UnableToLoadStandDataFileException("Unable to load the stand data file located at path '{$this->airportStandsFile}'");
+            throw new UnableToLoadStandDataFileException("Unable to load the stand data file located at path '{$filePath}'");
         }
 
         while (($row = fgetcsv($standDataStream, 4096)) !== false) {
@@ -197,17 +121,143 @@ class StandStatus
             }
 
             $this->validateCoordinatePairOrFail($latitude, $longitude);
-            $stand = new Stand($name, $latitude, $longitude, $this->standExtensions, $this->standExtensionPattern);
-
-            if (isset($this->stands[$stand->getKey()])) {
-                throw new UnableToParseStandDataException("A stand ID was defined twice in the data file! Stand ID: {$stand->getKey()}");
-            }
-            $this->stands[$stand->getKey()] = $stand;
+            $this->addStand($name, $latitude, $longitude);
         }
 
         fclose($standDataStream);
-        return true;
+        return $this;
     }
+
+    /**
+     * Loads in stand data from an array.
+     *
+     * @param array $standData Array of stands. Expects each stand to have the name/id at index 0, latitude at index 1, and longitude at index 2
+     * @return StandStatus
+     * @throws Exceptions\InvalidStandException
+     * @throws UnableToParseStandDataException
+     */
+    public function loadStandDataFromArray(array $standData)
+    {
+        $this->stands = [];
+
+        foreach ($standData as $stand) {
+            $this->addStand($stand[0], $stand[1], $stand[2]);
+        }
+        return $this;
+    }
+
+    /**
+     * Fetches VATSIM pilot data, and runs stand assignment algorithm
+     *
+     * @return StandStatus
+     * @throws NoStandDataException
+     */
+    public function parseData()
+    {
+        // If no stands loaded, throw
+        if(count($this->stands) == 0){
+            throw new NoStandDataException();
+        }
+
+        // Flush any stand caches
+        $this->occupiedStandsCache = null;
+        $this->unoccupiedStandsCache = null;
+
+        // Fetch pilot data
+        $vatsimData = new VatsimData();
+        $pilots = $this->getVATSIMPilots($vatsimData);
+
+        // Clear existing matches
+        foreach ($this->stands as &$stand){
+            $stand->clearParsedData();
+        }
+
+        // If we have pilots, filter and run assignment program
+        if ($pilots && $this->getAircraftWithinParameters($pilots)) {
+            $this->checkIfAircraftAreOnStand();
+        }
+        return $this;
+    }
+
+    /*
+     * Useful functions
+     */
+
+    /**
+     * Returns a list of all the stands (minus hidden side stands if enabled)
+     *
+     * @param bool $assoc
+     * @return Stand[]
+     */
+    public function stands($assoc = false)
+    {
+        if(!$this->hideStandSidesWhenOccupied){
+            return $this->allStands($assoc);
+        }
+        return array_filter($this->allStands($assoc), function (Stand $stand){
+            return !$stand->isPartOfOccupiedGroup();
+        });
+    }
+
+    /**
+     * Returns all loaded stands, irrespective of if they are hidden or not
+     *
+     * @param bool $assoc
+     * @return Stand[]
+     */
+    public function allStands($assoc = false)
+    {
+        return $assoc ? $this->stands : array_values($this->stands);
+    }
+
+    /**
+     * Returns a list of all occupied stands
+     *
+     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
+     * @return Stand[]
+     */
+    public function occupiedStands($assoc = false)
+    {
+        if (!$this->occupiedStandsCache) {
+            $this->occupiedStandsCache = array_filter($this->stands(true), function (Stand $stand) {
+                return $stand->isOccupied();
+            });
+        }
+
+        return $assoc ? $this->occupiedStandsCache : array_values($this->occupiedStandsCache);
+    }
+
+    /**
+     * Returns a list of all unoccupied stands
+     *
+     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
+     * @return Stand[]
+     */
+    public function unoccupiedStands($assoc = false)
+    {
+        if (!$this->unoccupiedStandsCache) {
+            $this->unoccupiedStandsCache = array_filter($this->stands(true), function (Stand $stand) {
+                return !$stand->isOccupied();
+            });
+        }
+
+        return $assoc ? $this->unoccupiedStandsCache : array_values($this->unoccupiedStandsCache);
+    }
+
+    /**
+     * Returns all the aircraft that are deemed on the ground
+     *
+     * @return Aircraft[]
+     */
+    public function getAllAircraft()
+    {
+        return $this->aircraftSearchResults;
+    }
+
+    /*
+     * Internal Processing Function
+     */
+
 
     /**
      * Returns an array of pilots from the VATSIM data feed
@@ -286,6 +336,24 @@ class StandStatus
         }
     }
 
+    /**
+     * Adds a stand to the lift of stands
+     *
+     * @param $id
+     * @param $latitude
+     * @param $longitude
+     * @throws Exceptions\InvalidStandException
+     * @throws UnableToParseStandDataException
+     */
+    private function addStand($id, $latitude, $longitude)
+    {
+        $stand = new Stand($id, $latitude, $longitude, $this->standExtensions, $this->standExtensionPattern);
+
+        if (isset($this->stands[$stand->getKey()])) {
+            throw new UnableToParseStandDataException("A stand ID was defined twice in the stand data! Stand ID: {$stand->getKey()}");
+        }
+        $this->stands[$stand->getKey()] = $stand;
+    }
 
     /**
      * Sets the given stand (by index reference) to occupied
@@ -313,13 +381,7 @@ class StandStatus
         // Get complementary stands
         $standSides = $this->complementaryStands($stand);
         if ($standSides) {
-
             foreach ($standSides as $stand) {
-                if ($this->hideStandSidesWhenOccupied) {
-                    unset($this->stands[$stand->getKey()]);
-                    continue;
-                }
-
                 $this->setStandOccupied($stand, $aircraft);
             }
         }
@@ -544,14 +606,6 @@ class StandStatus
     {
         $this->standExtensionPattern = $standExtensionPattern;
         return $this;
-    }
-
-    /**
-     * @return Aircraft[]
-     */
-    public function getAllAircraft()
-    {
-        return $this->aircraftSearchResults;
     }
 }
 

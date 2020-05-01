@@ -4,7 +4,8 @@ use CobaltGrid\VatsimStandStatus\StandStatus;
 
 require_once '../vendor/autoload.php';
 
-$StandStatus = new StandStatus(dirname(__FILE__) . "/../tests/Fixtures/SampleData/egkkstands.csv", 51.148056, -0.190278, null, StandStatus::COORD_FORMAT_CAA);
+$StandStatus = new StandStatus(51.148056, -0.190278, StandStatus::COORD_FORMAT_CAA);
+$StandStatus->loadStandDataFromCSV(dirname(__FILE__) . "/../tests/Fixtures/SampleData/egkkstands.csv")->parseData();
 ?>
 
 <html>
@@ -113,7 +114,7 @@ $StandStatus = new StandStatus(dirname(__FILE__) . "/../tests/Fixtures/SampleDat
                 </tr>
                 </thead>
                 <tbody>
-                <? foreach ($StandStatus->allStands() as $stand) { ?>
+                <? foreach ($StandStatus->stands() as $stand) { ?>
                     <tr>
                         <td><?= $stand->getName() ?></td>
                         <td><?= $stand->latitude ?></td>
@@ -130,7 +131,7 @@ $StandStatus = new StandStatus(dirname(__FILE__) . "/../tests/Fixtures/SampleDat
                 <?php
                 foreach ($StandStatus->getAllAircraft() as $pilot) {
                     if($pilot->onStand()){
-                        echo "<div class='col-5 bg-primary m-1'>{$pilot->callsign} ({$pilot->latitude},{$pilot->longitude}) (Stand {$pilot->getStandIndex()})</div>";
+                        echo "<div class='col-5 bg-primary m-1 text-white'>{$pilot->callsign} ({$pilot->latitude},{$pilot->longitude}) (Stand {$pilot->getStandIndex()})</div>";
                     }else{
                         echo "<div class='col-5 bg-light m-1'>{$pilot->callsign} ({$pilot->latitude},{$pilot->longitude}) (Not on stand)</div>";
                     }

@@ -75,6 +75,11 @@ class Stand
         return !!$this->occupier;
     }
 
+    public function isPartOfOccupiedGroup()
+    {
+        return $this->isOccupied() && $this->occupier->getStandIndex() !== $this->getKey();
+    }
+
     /**
      * @return string
      */
@@ -127,6 +132,14 @@ class Stand
         }
 
         return !$this->standRootComesFirst() ? $matches[1] : $matches[2];
+    }
+
+    /**
+     *  Resets the stand to remove any matched aircraft
+     */
+    public function clearParsedData()
+    {
+        $this->occupier = null;
     }
 
     /**

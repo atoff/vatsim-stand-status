@@ -7,13 +7,15 @@
 * [About](#about)
 * [Installation](#installation)
 * [Configuration](#configuration)
-  - [Example](#example)
 * [Usage](#usage)
-    + [Stand Data CSV File](#stand-data-csv-file)
     + [Construct an Instance](#construct-an-instance)
-    + [The Objects](#the-objects)
+    + [Loading Stand Data](#loading-stand-data)
+    + [Parsing the Data](#parsing-the-data)
+* [Data Types](#data-types)
 * [Examples](#examples)
-    * [Getting all the stands](#getting-all-the-stands)
+    * [Constructing the library with a CSV data file](#constructing-the-library-with-a-csv-data-file)
+    * [Constructing the library with a stand data array](#constructing-the-library-with-a-stand-data-array)
+    * [Getting all the stands](#getting-stands)
     * [Getting all occupied stands](#getting-all-occupied-stands)
     * [Get all aircraft on the ground](#get-all-aircraft-on-the-ground)
 
@@ -50,7 +52,7 @@ $ composer require cobaltgrid/vatsim-stand-status
 
 ## Configuration
 
-Stand Status's options are easily configurable through a series of setters on the base class. After changing the settings, make sure to run `$standStatus->parseData()` to re-run the correlation algorithm.
+Stand Status's options are easily configurable through a series of setters on the base class. After changing the settings, make sure to run `$standStatus->parseData()` to (re)run the correlation algorithm.
 
 Note that these are fluent setters, so you can chain them together.
 
@@ -92,25 +94,7 @@ Below are the available options. Prefix with get/set depending on what you want 
 
 ## Usage
 
-### Stand Data CSV File
-Stand data is read into the library via a CSV file, an example of which can be found in the `tests/Fixtures/SampleData/egkkstands.csv`.
-
-The first row is reserved for headers. The order of which should be ID, Latitude and Longitude.
-
-* In the ID column is the stand name. This can be text, such as "42L", and doesn't just have to be a number.
-* In the Latitude and Longitude columns should be the stand's latitude and longitude coordinate respectively. Current supported formats are:
-    * Decimal (Default) - e.g. 51.0100 by -1.12000
-    * CAA / Aerospace - e.g. 510917.35N
-
-If your stand data file uses anything other than the default, you must specify this when constructing the instance (See next section)
-
-In the end, you should have a CSV file that looks something like this (For a CAA / Aerospace format):
-
-| id        	| latitude      | longitude  	|
-| ------------- |:-------------:| :----:	|
-| 1 		| 510917.35N 	| 0000953.33W 	|
-| 2 		| 510915.83N    | 0000952.81W 	|
-| 3		| 510914.31N    | 0000952.28W 	|	
+There are 3 steps you need to take in order to get this library working:
 
 ### Construct an Instance
 
@@ -124,41 +108,87 @@ If you have installed via composer, include the autoloader:
 Then, an instance of the class must be made:
 ```
 $StandStatus = new StandStatus(
-        $standDataPath,
         $airportLatitude,
         $airportLongitude,
-        $maxAirportDistance = null,
-        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL,
-        $parseData = true
+        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL
 );
 ```
 
-#### Required
-* `$standDataPath` - The absolute path to the stand CSV file
-* `airportLatitude` - The decimal-format version of the airport's latitude. e.g. 51.148056
+##### Required
+* `$airportLatitude` - The decimal-format version of the airport's latitude. e.g. 51.148056
 * `$airportLongitude` - The decimal-format version of the airport's longitude. e.g. -0.190278
-* `$maxAirportDistance ` - The maximum distance filtered aircraft can be from the airport coordinates in kilometers. If left empty, reverts to default of 2km.
+##### Optional
 * `$standCoordinateFormat` - Sets the format of coordinates in the stand data file. Defaults to decimal.
     * Use `StandStatus::COORD_FORMAT_DECIMAL` for decimal coordinates (-51.26012)
     * Use `StandStatus::COORD_FORMAT_CAA` for CAA / Aerospace Coordinate format (510917.35N)
-* `$parseData` - Boolean. Sets whether the data should be parsed immediately. Set to false when you plan on changing the default variables in "Configuration".
 
 Here is an example:
 ```php
     use CobaltGrid\VatsimStandStatus\StandStatus;
 
     $StandStatus = new StandStatus(
-        dirname(__FILE__) . "/standData/egkkstands.csv",
         51.148056,
         -0.190278,
-        3,
         StandStatus::COORD_FORMAT_CAA
     );
 ```
 
-By default, once constructed, the VATSIM data file will be downloaded and parsed, and aircraft assigned to stands.
+### Loading Stand Data
 
-### The Objects
+After constructing the instance, you must load in the stand data for the airport.
+
+Stand status accepts two types of stand data input:
+
+####1. CSV Data File
+
+Stand data can be read into the library via a CSV file, an example of which can be found in the `tests/Fixtures/SampleData/egkkstands.csv`.
+
+You can load in a CSV file's data like so:
+```php
+    $standStatus->loadStandDataFromCSV('path/to/data.csv');
+```
+
+The first row is reserved for headers. The order of which should be ID, Latitude and Longitude.
+
+* In the ID column is the stand name. This can be text, such as "42L", and doesn't just have to be a number.
+* In the Latitude and Longitude columns should be the stand's latitude and longitude coordinate respectively. Current supported formats are:
+    * Decimal (Default) - e.g. 51.0100 by -1.12000
+    * CAA / Aerospace - e.g. 510917.35N
+
+If your stand data file uses anything other than the default, you must specify this when constructing the instance (See above section)
+
+In the end, you should have a CSV file that looks something like this (For a CAA / Aerospace format):
+
+| id        	| latitude      | longitude  	|
+| ------------- |:-------------:| :----:	|
+| 1 		| 510917.35N 	| 0000953.33W 	|
+| 2 		| 510915.83N    | 0000952.81W 	|
+| 3		| 510914.31N    | 0000952.28W 	|	
+
+####2. Array
+
+Alternatively, you can load in stand data through an array that follows the format id, latitude, longitude:
+```php
+    $standStatus->loadStandDataFromArray([
+        ['1', '510917.35N', '0000953.33W'],
+        ['2', '510915.83N', '0000952.81W'],
+        ['3', '510914.31N', '0000952.28W'],
+        ...
+    ]);
+```
+
+Again, make sure you set the correct stand coordinate format in the constructor.
+
+### Parsing the Data
+
+You must then tell the library to download and parse the VATSIM data to assign aircraft to stands. This is done like so:
+```php
+    $standStatus->parseData();
+```
+
+You can then use the methods to retrieve a list of stands with assigned aircraft, etc.
+
+## Data Types
 
 There are two main object types used:
 * `Stand::class`
@@ -177,9 +207,31 @@ There are two main object types used:
 
 For an integrated usage example, see the Gatwick demo in `examples/eggkStands.php`.
 
-##### Getting all the stands
+##### Constructing the library with a CSV data file
 ```php
-    foreach ($standStatus->allStands() as $stand){
+    use CobaltGrid\VatsimStandStatus\StandStatus;
+    $standStatus = new StandStatus(
+        51.148056,
+        -0.190278,
+        StandStatus::COORD_FORMAT_CAA);
+    $standStatus->loadStandDataFromCSV('path/to/data.csv')->parseData();
+```
+
+##### Constructing the library with a stand data array
+```php
+    $standStatus = new \CobaltGrid\VatsimStandStatus\StandStatus(
+        51.148056,
+        -0.190278);
+    $standStatus->loadStandDataFromArray([
+        ['1', 51.154819, -0.164813],
+        ['10', 51.15509, -0.16466],
+        ['101', 51.1568, -0.17706]
+    ])->parseData();
+```
+
+##### Getting stands
+```php
+    foreach ($standStatus->stands() as $stand){
         if ($stand->isOccupied()) {
             echo "Stand {$stand->getName()} is occupied by {$stand->occupier->callsign}</br>";
         }else{
