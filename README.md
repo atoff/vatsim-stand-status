@@ -139,16 +139,18 @@ After constructing the instance, you must load in the stand data for the airport
 
 Stand status accepts two types of stand data input:
 
-####1. CSV Data File
+#### 1. CSV Data File
 
-Stand data can be read into the library via a CSV file, an example of which can be found in the `tests/Fixtures/SampleData/egkkstands.csv`.
+Stand data can be read into the library via a CSV file, an example of which can be found in `tests/Fixtures/SampleData/egkkstands.csv`.
 
 You can load in a CSV file's data like so:
 ```php
     $standStatus->loadStandDataFromCSV('path/to/data.csv');
 ```
 
-The first row is reserved for headers. The order of which should be ID, Latitude and Longitude.
+The first row can be used for headers if you so wish.
+ 
+ The order of the data should be `ID, Latitude, Longitude`.
 
 * In the ID column is the stand name. This can be text, such as "42L", and doesn't just have to be a number.
 * In the Latitude and Longitude columns should be the stand's latitude and longitude coordinate respectively. Current supported formats are:
@@ -165,7 +167,7 @@ In the end, you should have a CSV file that looks something like this (For a CAA
 | 2 		| 510915.83N    | 0000952.81W 	|
 | 3		| 510914.31N    | 0000952.28W 	|	
 
-####2. Array
+#### 2. Array
 
 Alternatively, you can load in stand data through an array that follows the format id, latitude, longitude:
 ```php
@@ -243,7 +245,7 @@ For an integrated usage example, see the Gatwick demo in `examples/eggkStands.ph
     // Stand 1 is occupied by SHT1G
     // Stand 2 is not occupied
 ```
-> Note that the output of `allStands()` will hide "side stands" if the `hideStandSidesWhenOccupied` setting is true
+> Note that the output of `stands()` will hide "side stands" if the `hideStandSidesWhenOccupied` setting is true. If you want to get all stands, including this hidden stands, use `allStands()`.
 
 
 ##### Getting all occupied stands
@@ -257,7 +259,7 @@ For an integrated usage example, see the Gatwick demo in `examples/eggkStands.ph
     // Stand 1 is occupied by SHT1G
     // Stand 3L is occupied by DLH49Y
 ```
-> If you want an associative array, where the index is the stand name, use `->occupiedStands(true)`
+> If you want an associative array, where the index is the stand name, use `->occupiedStands(true)`. Use can use this on all the methods that returns an array of stands.
 
 >Similarly, you can also use `->unoccupiedStands()` to get an array of unoccupied stands
 >

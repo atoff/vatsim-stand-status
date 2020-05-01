@@ -20,6 +20,7 @@ class StandStatusTest extends TestCase
     private $standDataFileCAA;
     private $standDataFileDecimal;
     private $standDataFileInvalid;
+    private $standDataFileNoHeaders;
 
     private $testPilots = [
         [ // Not on stand (on RVP)
@@ -68,6 +69,7 @@ class StandStatusTest extends TestCase
         $this->standDataFileCAA = dirname(__DIR__)."/Fixtures/SampleData/egkkstands.csv";
         $this->standDataFileDecimal = dirname(__DIR__)."/Fixtures/SampleData/decimalexample.csv";
         $this->standDataFileInvalid = dirname(__DIR__)."/Fixtures/SampleData/invalidexample.csv";
+        $this->standDataFileNoHeaders = dirname(__DIR__)."/Fixtures/SampleData/decimalexamplenoheaders.csv";
 
         $this->instance = \Mockery::mock(StandStatus::class, [
             51.148056,
@@ -110,6 +112,13 @@ class StandStatusTest extends TestCase
             -0.190278
         );
         $mock->loadStandDataFromCSV($this->standDataFileDecimal)->parseData();
+    }
+
+    public function testItCanParseWithNoHeaders()
+    {
+        $instance = $this->createNewInstance();
+        $instance->loadStandDataFromCSV($this->standDataFileNoHeaders);
+        $this->assertEquals('1', $instance->stands(true)['1']->getKey());
     }
 
     public function testItThrowsWithInvalidCoordinates()
