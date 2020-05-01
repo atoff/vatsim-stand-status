@@ -259,7 +259,7 @@ For an integrated usage example, see the Gatwick demo in `examples/egkkStands.ph
     // Stand 1 is occupied by SHT1G
     // Stand 3L is occupied by DLH49Y
 ```
-> If you want an associative array, where the index is the stand name, use `->occupiedStands(true)`. Use can use this on all the methods that returns an array of stands.
+> If you want an associative array, where the index is the stand name, use `->occupiedStands(true)`. Use can use this on all the methods that return an array of stands.
 
 >Similarly, you can also use `->unoccupiedStands()` to get an array of unoccupied stands
 >
