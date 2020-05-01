@@ -207,7 +207,7 @@ There are two main object types used:
 
 ## Examples
 
-For an integrated usage example, see the Gatwick demo in `examples/eggkStands.php`.
+For an integrated usage example, see the Gatwick demo in `examples/egkkStands.php`.
 
 ##### Constructing the library with a CSV data file
 ```php
