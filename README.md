@@ -11,8 +11,8 @@
     + [Construct an Instance](#construct-an-instance)
     + [Loading Stand Data](#loading-stand-data)
         - [1. Loading from a CSV](#1-loading-from-a-csv)
-        - [2. Loading from an array](#2-loading-from-an-array)
-        - [3. Loading from OpenStreetMap (OSM)](#3-loading-from-openstreetmap--osm-)
+        - [2. Loading from an Array](#2-loading-from-an-array)
+        - [3. Loading from OpenStreetMap (OSM)](#3-loading-from-openstreetmap)
     + [Parsing the Data](#parsing-the-data)
 * [Data Types](#data-types)
 * [Examples](#examples)
@@ -170,7 +170,7 @@ In the end, you should have a CSV file that looks something like this (For a CAA
 | 2 		| 510915.83N    | 0000952.81W 	|
 | 3		| 510914.31N    | 0000952.28W 	|	
 
-#### 2. Loading from an array
+#### 2. Loading from an Array
 
 Alternatively, you can load in stand data through an array that follows the format id, latitude, longitude:
 ```php
@@ -184,9 +184,9 @@ Alternatively, you can load in stand data through an array that follows the form
 
 Again, make sure you set the correct stand coordinate format in the constructor.
 
-#### 3. Loading from OpenStreetMap (OSM)
+#### 3. Loading from OpenStreetMap
 
-This option leverages the powerful OpenStreetMap [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to attempt to find and download stand data that has been contributed on OSM. Unlike the other two methods, you don't have to do any data-digging at all, and just have to specify the ICAO code of the airport.
+This option leverages the powerful OpenStreetMap (OSM) [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) to attempt to find and download stand data that has been contributed on OSM. Unlike the other two methods, you don't have to do any data-digging at all, and just have to specify the ICAO code of the airport.
 
 Some __important__ notes:
 * OSM data is constantly being edited. There is never any guarantee the data is accurate, or that it will stay up to date with changes. You should check the airport your want to use this method for has data available by taking a look on the [OSM web editor](https://www.openstreetmap.org/edit). If it have no / limited data, change it yourself! Contribute to #opensource.
