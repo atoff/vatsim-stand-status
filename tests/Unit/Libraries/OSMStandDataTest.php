@@ -66,6 +66,20 @@ class OSMStandDataTest extends TestCase
         $this->assertEquals($parsedFile, file_get_contents($this->instance->getCacheFilePath()));
     }
 
+    public function testItAllowsEmptyCSV()
+    {
+        $responseFile = file_get_contents(dirname(__FILE__).'/../../Fixtures/OSMExample/exampleEmptyAPIResponse.csv');
+
+        $client = Mockery::mock(Client::class);
+        $client->shouldReceive('get->getBody->getContents')
+            ->andReturn($responseFile);
+
+        $instance = new OSMStandData('EGKK', $client);
+
+        $this->assertEquals($this->instance->getCacheFilePath(), $instance->fetchStandData(1, 1, 20));
+        $this->assertFileExists($this->instance->getCacheFilePath());
+    }
+
     public function testItCanSetCacheTTL()
     {
         $this->assertInstanceOf(OSMStandData::class, $this->instance->setCacheTTL(60));
