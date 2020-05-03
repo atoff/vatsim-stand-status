@@ -3,4 +3,4 @@ composer.lock
 .idea
 build
 .phpunit.result.cache
-storage/data/*
+storage/data/*.csv
