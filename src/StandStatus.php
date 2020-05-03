@@ -3,10 +3,15 @@
 namespace CobaltGrid\VatsimStandStatus;
 
 use CobaltGrid\VatsimStandStatus\Exceptions\CoordinateOutOfBoundsException;
+use CobaltGrid\VatsimStandStatus\Exceptions\InvalidCoordinateFormat;
+use CobaltGrid\VatsimStandStatus\Exceptions\InvalidICAOCodeException;
+use CobaltGrid\VatsimStandStatus\Exceptions\InvalidStandException;
 use CobaltGrid\VatsimStandStatus\Exceptions\NoStandDataException;
 use CobaltGrid\VatsimStandStatus\Exceptions\UnableToLoadStandDataFileException;
 use CobaltGrid\VatsimStandStatus\Exceptions\UnableToParseStandDataException;
 use CobaltGrid\VatsimStandStatus\Libraries\CAACoordinateConverter;
+use CobaltGrid\VatsimStandStatus\Libraries\DecimalCoordinateHelper;
+use CobaltGrid\VatsimStandStatus\Libraries\OSMStandData;
 use Vatsimphp\VatsimData;
 
 class StandStatus
@@ -33,6 +38,7 @@ class StandStatus
     */
 
 
+    // Coordinates of format 51.12345
     const COORD_FORMAT_DECIMAL = 1;
     // Coordinates of format 521756.91N
     const COORD_FORMAT_CAA = 2;
@@ -78,7 +84,7 @@ class StandStatus
         $this->airportLatitude = $airportLatitude;
         $this->airportLongitude = $airportLongitude;
         if ($standCoordinateFormat) $this->standCoordinateFormat = $standCoordinateFormat;
-        $this->validateCoordinatePairOrFail($airportLatitude, $airportLongitude);
+        DecimalCoordinateHelper::validateCoordinatePairOrFail($airportLatitude, $airportLongitude);
     }
 
     /**
@@ -120,12 +126,36 @@ class StandStatus
                     break;
             }
 
-            $this->validateCoordinatePairOrFail($latitude, $longitude);
+            DecimalCoordinateHelper::validateCoordinatePairOrFail($latitude, $longitude);
             $this->addStand($name, $latitude, $longitude);
         }
-
         fclose($standDataStream);
         return $this;
+    }
+
+    /**
+     * Fetches parking position data from the OpenStreetMap's Overpass API.
+     *
+     * It should be noted that OSM will not always have all the data needed for every airport, and some of the data may
+     * be incorrect, out of date or ill-formatted. Check on the OpenStreetMap's editor to ensure your airport has coverage.
+     *
+     * OpenStreetMap data is licensed under the ODbL license. If you use this method, you MUST provide appropriate
+     * attribution to OSM. See https://www.openstreetmap.org/copyright for details.
+     *
+     * @param string $icao 4 letter ICAO code for the airport
+     * @param OSMStandData $osmDataLibrary Optional. Inject the OSMStandData library if you would like to change the default settings
+     * @return StandStatus
+     * @throws CoordinateOutOfBoundsException|InvalidStandException|InvalidStandException|InvalidCoordinateFormat|UnableToLoadStandDataFileException|UnableToParseStandDataException|InvalidICAOCodeException
+     */
+    public function fetchAndLoadStandDataFromOSM($icao, OSMStandData $osmDataLibrary = null)
+    {
+        if ($this->standCoordinateFormat != self::COORD_FORMAT_DECIMAL) {
+            throw new InvalidCoordinateFormat('To use OSM map data, the stand coordinate format must be set to decimal!');
+        }
+
+        if (!$osmDataLibrary) $osmDataLibrary = new OSMStandData($icao);
+        $csvPath = $osmDataLibrary->fetchStandData($this->airportLatitude, $this->airportLongitude, $this->maxDistanceFromAirport * 3);
+        return $this->loadStandDataFromCSV($csvPath);
     }
 
     /**
@@ -133,8 +163,7 @@ class StandStatus
      *
      * @param array $standData Array of stands. Expects each stand to have the name/id at index 0, latitude at index 1, and longitude at index 2
      * @return StandStatus
-     * @throws Exceptions\InvalidStandException
-     * @throws UnableToParseStandDataException
+     * @throws InvalidStandException|UnableToParseStandDataException
      */
     public function loadStandDataFromArray(array $standData)
     {
@@ -155,7 +184,7 @@ class StandStatus
     public function parseData()
     {
         // If no stands loaded, throw
-        if(count($this->stands) == 0){
+        if (count($this->stands) == 0) {
             throw new NoStandDataException();
         }
 
@@ -168,7 +197,7 @@ class StandStatus
         $pilots = $this->getVATSIMPilots($vatsimData);
 
         // Clear existing matches
-        foreach ($this->stands as &$stand){
+        foreach ($this->stands as &$stand) {
             $stand->clearParsedData();
         }
 
@@ -191,10 +220,10 @@ class StandStatus
      */
     public function stands($assoc = false)
     {
-        if(!$this->hideStandSidesWhenOccupied){
+        if (!$this->hideStandSidesWhenOccupied) {
             return $this->allStands($assoc);
         }
-        return array_filter($this->allStands($assoc), function (Stand $stand){
+        return array_filter($this->allStands($assoc), function (Stand $stand) {
             return !$stand->isPartOfOccupiedGroup();
         });
     }
@@ -287,7 +316,7 @@ class StandStatus
         foreach ($pilots as $pilot) {
             $aircraft = new Aircraft($pilot);
 
-            $insideAirfieldRange = $this->distanceBetweenCoordinates($aircraft->latitude, $aircraft->longitude, $this->airportLatitude, $this->airportLongitude)
+            $insideAirfieldRange = DecimalCoordinateHelper::distanceBetweenCoordinates($aircraft->latitude, $aircraft->longitude, $this->airportLatitude, $this->airportLongitude)
                 < $this->maxDistanceFromAirport;
             $belowSpecifiedGroundspeed = $aircraft->groundspeed <= $this->maxAircraftGroundspeed;
             $belowSpecifiedAltitude = $aircraft->altitude <= $this->maxAircraftAltitude;
@@ -315,7 +344,7 @@ class StandStatus
             foreach ($this->stands as $standIndex => $stand) {
 
                 // Find distance between aircraft and stand
-                $distance = $this->distanceBetweenCoordinates($stand->latitude, $stand->longitude, $aircraft->latitude, $aircraft->longitude);
+                $distance = DecimalCoordinateHelper::distanceBetweenCoordinates($stand->latitude, $stand->longitude, $aircraft->latitude, $aircraft->longitude);
 
                 $distanceInsideBound = $distance < $this->maxStandDistance;
 
@@ -405,75 +434,6 @@ class StandStatus
         }
 
         return count($stands) > 0 ? $stands : null;
-    }
-
-
-    /*
-     * Helpers
-     */
-
-
-    /**
-     * Validates a given latitude/longitude pair and throws an exception if invalid
-     *
-     * @param $latitude
-     * @param $longitude
-     * @return bool
-     * @throws CoordinateOutOfBoundsException
-     */
-    private function validateCoordinatePairOrFail($latitude, $longitude)
-    {
-        if ($this->validateLatitudeCoordinate($latitude) && $this->validateLongitudeCoordinate($longitude)) {
-            return true;
-        }
-        throw new CoordinateOutOfBoundsException;
-    }
-
-    /**
-     * Validates a given latitude coordinate to make sure it is realistic
-     *
-     * @param float $coordinate
-     * @return bool
-     */
-    private function validateLatitudeCoordinate($coordinate)
-    {
-        return $coordinate <= 90 && $coordinate >= -90;
-    }
-
-    /**
-     * Validates a given longitude coordinate to make sure it is realistic
-     *
-     * @param float $coordinate
-     * @return bool
-     */
-    private function validateLongitudeCoordinate($coordinate)
-    {
-        return $coordinate <= 180 && $coordinate >= -180;
-    }
-
-    /**
-     * Return the distance in kilometres between two sets of coordinates
-     * @param float $latitude1 Latitude in decimal format
-     * @param float $longitude1 Longitude in decimal format
-     * @param float $latitude2 Latitude in decimal format
-     * @param float $longitude2 Longitude in decimal format
-     * @return float|int
-     */
-    private function distanceBetweenCoordinates($latitude1, $longitude1, $latitude2, $longitude2)
-    {
-        $earth_radius = 6371;
-
-        $latitude1 = floatval($latitude1);
-        $longitude1 = floatval($longitude1);
-        $latitude2 = floatval($latitude2);
-        $longitude2 = floatval($longitude2);
-
-        $dLat = deg2rad($latitude2 - $latitude1);
-        $dLon = deg2rad($longitude2 - $longitude1);
-
-        $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($latitude1)) * cos(deg2rad($latitude2)) * sin($dLon / 2) * sin($dLon / 2);
-        $c = 2 * asin(sqrt($a));
-        return $earth_radius * $c;
     }
 
 
