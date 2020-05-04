@@ -291,7 +291,7 @@ For an integrated usage example, see the Gatwick demo in `examples/egkkStands.ph
 ##### Get all aircraft on the ground
 
 ```php
-    foreach ($standStatus->getAllAircraft() as $aircraft){
+    foreach ($standStatus->allAircraft() as $aircraft){
         if($aircraft->onStand()){
             $stand = $aircraft->getStand($standStatus->allStands());
             echo "{$aircraft->callsign} is on stand {$stand->getName()}</br>";

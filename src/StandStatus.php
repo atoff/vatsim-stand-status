@@ -278,7 +278,7 @@ class StandStatus
      *
      * @return Aircraft[]
      */
-    public function getAllAircraft()
+    public function allAircraft()
     {
         return $this->aircraftSearchResults;
     }
