@@ -187,13 +187,13 @@ class StandStatusTest extends TestCase
     {
         $this->assertEquals(['TEST1', 'TEST2', 'TEST5'], array_map(function(Aircraft $aircraft){
             return $aircraft->callsign;
-        }, $this->instance->allAircraft()()));
+        }, $this->instance->allAircraft()));
     }
     public function testItAssignsStandsCorrectly()
     {
-        $this->assertNull($this->instance->allAircraft()()[0]->getStandIndex());
-        $this->assertNull($this->instance->allAircraft()()[1]->getStandIndex());
-        $this->assertEquals('43N', $this->instance->allAircraft()()[2]->getStandIndex());
+        $this->assertNull($this->instance->allAircraft()[0]->getStandIndex());
+        $this->assertNull($this->instance->allAircraft()[1]->getStandIndex());
+        $this->assertEquals('43N', $this->instance->allAircraft()[2]->getStandIndex());
     }
 
     public function testItReturnsListOfStandsAndAllStands()
