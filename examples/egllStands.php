@@ -1,128 +1,152 @@
 <?php
+/*
+ * This is an integrated example of how to use StandStatus's OSM data feature to create a StandStatus instance.
+ * The target airport here is London Heathrow (EGLL).
+ */
 
 use CobaltGrid\VatsimStandStatus\StandStatus;
 
 require_once '../vendor/autoload.php';
 
-$StandStatus = new StandStatus("EGLL", dirname(__FILE__) . "/standData/egllstands.csv", 51.4775, -0.461389, 3);
+$StandStatus = new StandStatus(51.4775, -0.461389);
+$StandStatus->setMaxDistanceFromAirport(3)->fetchAndLoadStandDataFromOSM("EGLL")->parseData();
 ?>
-<!-- GMaps & Labels -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
-<script src="https://maps.googleapis.com/maps/api/js?key="></script>
-<script src="js/maplabel-min.js"></script>
 
-<script>
-  $(document).ready(function(){
-		var center = {lat: 51.4675, lng: -0.461389};
-		map = new google.maps.Map(document.getElementById('map'), {
-      zoom: 14,
-      mapTypeId: 'satellite',
-      center: center,
-      disableDefaultUI: true
+<html>
+<head>
+    <!-- Boostrap 4 -->
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+            integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+            integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+            integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 
-    });
-    <?php
-    foreach($StandStatus->occupiedStands() as $stand){
-      ?>
-      var cityCircle = new google.maps.Circle({
-          strokeColor: '#FF0000',
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: '#FF0000',
-          fillOpacity: 0.35,
-          map: map,
-          center: {lat:
-            <?php
-            echo $stand['occupied']['latitude'];
-            ?>, lng:
-            <?php
-            echo $stand['occupied']['longitude'];
-            ?>},
-          radius: 40
+    <script src="//cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="//cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+
+    <!-- GMaps & Labels -->
+    <script src="https://maps.googleapis.com/maps/api/js?key="></script>
+    <script src="js/maplabel-min.js"></script>
+
+    <!-- Map Script -->
+    <script>
+        $(document).ready(function () {
+            var center = {lat:51.4775, lng: -0.461389};
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 14,
+                mapTypeId: 'satellite',
+                center: center,
+                disableDefaultUI: true
+
+            });
+
+            <? foreach($StandStatus->stands() as $stand){ ?>
+            new google.maps.Circle({
+                strokeColor: '<?= $stand->isOccupied() ? "#FF0000" : "#00FF00 " ?>',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: '<?= $stand->isOccupied() ? "#FF0000" : "#00FF00 " ?>',
+                fillOpacity: 0.35,
+                map: map,
+                center: {
+                    lat: <?= $stand->latitude; ?>,
+                    lng: <?= $stand->longitude; ?>
+                },
+                radius: 40
+            });
+            <? if($stand->isOccupied()){ ?>
+            new MapLabel({
+                text: "<?= $stand->occupier->callsign ?>",
+                position: new google.maps.LatLng(
+                    <?= $stand->occupier->latitude;?>,
+                    <?= $stand->occupier->longitude; ?>
+                ),
+                map: map,
+                fontSize: 12,
+                strokeWeight: 2
+            });
+            <? } ?>
+            <? } ?>
+
+            $('#standsTable').DataTable();
         });
-        var mapLabel = new MapLabel({
-          text: "<?php echo $stand['occupied']['callsign'] ?>",
-          position: new google.maps.LatLng(
-            <?php
-            echo $stand['occupied']['latitude'];
-            ?>,
-            <?php
-            echo $stand['occupied']['longitude'];
-            ?>),
-          map: map,
-          fontSize: 12,
-          strokeWeight: 2
-        });
-      <?php
-    }
-
-     ?>
-		var cityCircle = new google.maps.Circle({
-        strokeColor: '#FF0000',
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: '#FF0000',
-        fillOpacity: 0.35,
-        map: map,
-        center: {lat: 19.505434, lng:-98.919304},
-        radius: 100000
-      });
-
-  });
-</script>
-<div id="map" style="height: 500px;width: 700px;"></div>
-
-<table border="1">
-  <tr>
-    <th>Stand</th>
-    <th>Occupied</th>
-  </tr>
-  <?php
-  foreach($StandStatus->occupiedStands as $stand){
-    ?>
-    <tr>
-      <td><?php echo $stand ?></td>
-      <td><?php echo $StandStatus->stands[$stand]['occupied']['callsign'] ?></td>
-    </tr>
-    <?php
-  }
-
-   ?>
-</table>
+    </script>
 
 
-<table border="1">
-  <tr>
-    <th>Stand</th>
-    <th>Lat</th>
-    <th>Long</th>
-  </tr>
-<?php
-foreach ($StandStatus->stands as $stand) {
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-12 col-md-2 d-flex flex-column justify-content-center">
+            <h5>Occupied Stands</h5>
+            <table class="table table-responsive table-sm text-center align-self-center">
+                <tr>
+                    <th>Stand</th>
+                    <th>Occupied By</th>
+                </tr>
+                <?php
+                foreach ($StandStatus->occupiedStands() as $stand) {
+                    ?>
+                    <tr>
+                        <td><?= $stand->getName() ?></td>
+                        <td><?= $stand->occupier->callsign ?></td>
+                    </tr>
+                    <?php
+                }
 
- ?>
-<tr>
-  <td><?php echo $stand['id'] ?></td>
-  <td><?php echo $stand['latcoord'] ?></td>
-  <td><?php echo $stand['longcoord'] ?></td>
-  <td><?php
-  if (isset($stand['occupied']['callsign'])){
-    echo $stand['occupied']['callsign'];
-  }
-  ?></td>
-</tr>
- <?php
-
-}
-  ?>
-</table>
-
-<div>
-<ul>
-  <?php
-    foreach($StandStatus->aircraftSearchResults as $pilot){
-      echo "<li>" . $pilot['callsign'] . "</li> " . $pilot['latitude'] . " BY " . $pilot['longitude'];
-    }
-   ?>
-</ul>
+                ?>
+            </table>
+        </div>
+        <div class="col">
+            <div id="map" style="height: 500px;width: 100%;"></div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col d-flex flex-column justify-content-center">
+            <h5>All Stands</h5>
+            <i>Stand Data &copy; OpenStreetMap Contributors</i>
+            <table id="standsTable" class="table table-responsive table-sm text-center align-self-center">
+                <thead>
+                <tr>
+                    <th>Stand</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Occupier</th>
+                </tr>
+                </thead>
+                <tbody>
+                <? foreach ($StandStatus->stands() as $stand) { ?>
+                    <tr>
+                        <td><?= $stand->getName() ?></td>
+                        <td><?= $stand->latitude ?></td>
+                        <td><?= $stand->longitude ?></td>
+                        <td><? echo $stand->isOccupied() ? $stand->occupier->callsign : null ?></td>
+                    </tr>
+                <? } ?>
+                </tbody>
+            </table>
+        </div>
+        <div class="col">
+            <h5>Aircraft On The Ground</h5>
+            <div class="row">
+                <?php
+                foreach ($StandStatus->getAllAircraft() as $pilot) {
+                    if($pilot->onStand()){
+                        echo "<div class='col-5 bg-primary m-1 text-white'>{$pilot->callsign} ({$pilot->latitude},{$pilot->longitude}) (Stand {$pilot->getStandIndex()})</div>";
+                    }else{
+                        echo "<div class='col-5 bg-light m-1'>{$pilot->callsign} ({$pilot->latitude},{$pilot->longitude}) (Not on stand)</div>";
+                    }
+                }
+                ?>
+            </div>
+        </div>
+    </div>
 </div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+name: Stand Status CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+  - cron: "0 12 1 * *"
+
+jobs:
+  build:
+    name: CI on PHP Version ${{ matrix.php_versions }}
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        php_versions: ['7.2', '7.3', '7.4']
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v2
+      
+    - name: Install PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php_versions }}
+    
+    - name: Verify PHP Version
+      run: php -v
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+      
+    - name: Run PHPUNIT
+      run: vendor/bin/phpunit --coverage-text

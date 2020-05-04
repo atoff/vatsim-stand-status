@@ -1,23 +1,40 @@
 {
-    "name": "cobaltgrid/vatsim-stand-status",
-    "description" : "A PHP library to access the status of aircraft stands on VATSIM",
-    "keywords" : ["vatsim", "stand", "stands", "flight simulator"],
-    "homepage" : "https://github.com/atoff/vatsim-stand-status",
-    "type" : "library",
-    "license" : "AGPL-3.0-or-later",
-    "authors" : [
-      {
-        "name" : "Alex Toff",
-        "email" : "admin@cobaltgrid.com",
-        "homepage" : "https://www.cobaltgrid.com"
-      }
-    ],
-    "require": {
-        "skymeyer/vatsimphp": "^2.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "CobaltGrid\\VatsimStandStatus\\": "src/"
-        }
+  "name": "cobaltgrid/vatsim-stand-status",
+  "description": "A PHP library to access the status of aircraft stands on VATSIM",
+  "keywords": [
+    "vatsim",
+    "stand",
+    "stands",
+    "flight simulator"
+  ],
+  "homepage": "https://github.com/atoff/vatsim-stand-status",
+  "type": "library",
+  "license": "AGPL-3.0-or-later",
+  "authors": [
+    {
+      "name": "Alex Toff",
+      "email": "alex.toff@cobaltgrid.com",
+      "homepage": "https://cobaltgrid.com"
     }
+  ],
+  "require": {
+    "php": ">=7.2",
+    "skymeyer/vatsimphp": "^2.0",
+    "guzzlehttp/guzzle": "^6.5"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.5",
+    "mockery/mockery": "^1.3",
+    "symfony/var-dumper": "^5.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "CobaltGrid\\VatsimStandStatus\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  }
 }

@@ -1,549 +1,571 @@
 <?php
-    namespace CobaltGrid\VatsimStandStatus;
 
-    use Vatsimphp\VatsimData;
+namespace CobaltGrid\VatsimStandStatus;
 
-    class StandStatus
+use CobaltGrid\VatsimStandStatus\Exceptions\CoordinateOutOfBoundsException;
+use CobaltGrid\VatsimStandStatus\Exceptions\InvalidCoordinateFormat;
+use CobaltGrid\VatsimStandStatus\Exceptions\InvalidICAOCodeException;
+use CobaltGrid\VatsimStandStatus\Exceptions\InvalidStandException;
+use CobaltGrid\VatsimStandStatus\Exceptions\NoStandDataException;
+use CobaltGrid\VatsimStandStatus\Exceptions\UnableToLoadStandDataFileException;
+use CobaltGrid\VatsimStandStatus\Exceptions\UnableToParseStandDataException;
+use CobaltGrid\VatsimStandStatus\Libraries\CAACoordinateConverter;
+use CobaltGrid\VatsimStandStatus\Libraries\DecimalCoordinateHelper;
+use CobaltGrid\VatsimStandStatus\Libraries\OSMStandData;
+use Vatsimphp\VatsimData;
+
+class StandStatus
+{
+    /**
+     * @var Stand[]
+     */
+    private $stands = [];
+    /**
+     * @var Stand[]|null
+     */
+    private $occupiedStandsCache = null;
+    /**
+     * @var Stand[]|null
+     */
+    private $unoccupiedStandsCache = null;
+    /**
+     * @var Aircraft[]
+     */
+    private $aircraftSearchResults = [];
+
+    /*
+     Supported Coordinate Formats
+    */
+
+
+    // Coordinates of format 51.12345
+    const COORD_FORMAT_DECIMAL = 1;
+    // Coordinates of format 521756.91N
+    const COORD_FORMAT_CAA = 2;
+
+    /*
+     Airport Details
+    */
+    /**
+     * @var float
+     */
+    private $airportLatitude;
+    /**
+     * @var float
+     */
+    private $airportLongitude;
+
+    /*
+      Configuration Defaults
+     */
+    private $maxStandDistance = 0.07; // In kilometers
+    private $hideStandSidesWhenOccupied = true;
+    private $maxDistanceFromAirport = 2; // In kilometers
+    private $maxAircraftAltitude = 3000; // In feet
+    private $maxAircraftGroundspeed = 10; // In knots
+
+    private $standExtensions = ['L', 'C', 'R', 'A', 'B', 'N', 'E', 'S', 'W']; // Possible stand extensions/combinations. E.G Stand 25 includes 25L and 25R
+    private $standExtensionPattern = '<standroot><extensions>'; // Use <extensions> to determine where to insert the extensions, and <standroot> to represent the stand number. Can only use one of each
+    private $standCoordinateFormat = self::COORD_FORMAT_DECIMAL; // Stand Data file coordinate type
+
+
+    /**
+     * StandStatus constructor.
+     * @param float $airportLatitude The decimal-format latitude of the airport
+     * @param float $airportLongitude The decimal-format longitude of the airport
+     * @param int $standCoordinateFormat The format of the coordinates in the stand data file. Defaults to decimal.
+     * @throws CoordinateOutOfBoundsException
+     */
+    public function __construct(
+        $airportLatitude,
+        $airportLongitude,
+        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL)
     {
-
-        public $stands = [];
-        public $occupiedStands = [];
-        public $aircraftSearchResults = [];
-
-        /*
-         Airport Stand Details
-        */
-
-        public $airportICAO;
-        public $airportName;
-        public $airportCoordinates;
-
-        public $airportStandsFile;
-
-        /*
-          Configuration
-         */
-
-        private $maxStandDistance = 0.07; // In kilometeres
-        private $hideStandSidesWhenOccupied = true;
-        private $maxDistanceFromAirport = 2; // In kilometeres
-        private $maxAircraftAltitude = 3000; // In feet
-        private $maxAircraftGroundspeed = 10; // In knots
-        private $standExtensions = array("L", "C", "R", "A", "B");
-
-
-        public function __construct($airportICAO, $airportStandsFile, $airportLatCoordinate, $airportLongCoordinate, $parseData = true, $maxAirportDistance = null)
-        {
-            $this->airportICAO = $airportICAO;
-            $this->airportStandsFile = $airportStandsFile;
-            $this->airportCoordinates = array("lat" => $airportLatCoordinate, "long" => $airportLongCoordinate);
-            if ($maxAirportDistance != null) {
-                $this->maxDistanceFromAirport = $maxAirportDistance;
-            }
-
-            if ($this->loadStandsData()) {
-                if ($parseData) {
-                    $this->parseData();
-                }
-            }
-
-        }
-
-        public function allStands($pageNo = null, $pageLimit = null)
-        {
-            if ($pageLimit == null) {
-                return $this->stands;
-            } else {
-                if ($pageNo == null) {
-                    // Assume first page
-                    return array_slice($this->stands, 0, $pageLimit);
-                } else {
-                    return array_slice($this->stands, ($pageNo * $pageLimit) - $pageLimit, $pageLimit);
-                }
-
-            }
-
-        }
-
-        public function occupiedStands($pageNo = null, $pageLimit = null)
-        {
-            $occupiedStands = $this->occupiedStands;
-            foreach ($occupiedStands as $stand) {
-                $occupiedStands[$stand] = $this->stands[$stand]; // Fill in pilot data
-            }
-
-            if ($pageLimit == null) {
-                return $occupiedStands;
-            } else {
-                if ($pageNo == null) {
-                    // Assume first page
-                    return array_slice($occupiedStands, 0, $pageLimit);
-                } else {
-                    return array_slice($occupiedStands, ($pageNo * $pageLimit) - $pageLimit, $pageLimit);
-                }
-
-            }
-        }
-
-        public function allStandsPaginationArray($pageLimit)
-        {
-            // Work out the ammount of pages
-            $noOfPages = ceil(count($this->stands) / $pageLimit);
-            $pageinationArray = [];
-            for ($i = 0; $i < $noOfPages; $i++) {
-                $pageinationArray[] = $this->allStands($i, $pageLimit);
-            }
-
-            return $pageinationArray;
-
-
-        }
-
-        function parseData()
-        {
-            if ($this->getAircraftWithinParameters()) {
-                $this->checkIfAircraftAreOnStand();
-            }
-			return $this;
-        }
-
-        // Load the stand data
-        function loadStandsData()
-        {
-            $array = $fields = [];
-            $i = 0;
-            $handle = @fopen($this->airportStandsFile, "r");
-            if ($handle) {
-                while (($row = fgetcsv($handle, 4096)) !== false) {
-                    if (empty($fields)) {
-                        $fields = $row;
-                        continue;
-                    }
-                    $y = 0;
-                    foreach ($row as $k => $value) {
-                        if ($y == 1) { // Convert LAT coordinate
-                            $array[$row[0]][$fields[$k]] = $this->convertCAALatCoord($value);
-                        } else if ($y == 2) { // Convert LONG coordinate
-                            $array[$row[0]][$fields[$k]] = $this->convertCAALongCoord($value);
-                        } else {
-                            $array[$row[0]][$fields[$k]] = $value;
-                        }
-                        $y++;
-                    }
-                    $i++;
-                }
-                if (!feof($handle)) {
-                    echo "Error: unexpected fgets() fail\n";
-                    return false;
-                }
-                fclose($handle);
-            } else {
-                return false;
-            }
-            $this->stands = $array;
-            return true;
-        }
-
-        function getAircraftWithinParameters()
-        {
-            $vatsim = new VatsimData();
-            $vatsim->loadData();
-
-            try {
-                $pilots = $vatsim->getPilots()->toArray();
-            }catch (Exception $e){
-                return false;
-            }
-
-            // INSERT TEST PILOTS
-            //$pilots[] = array('callsign' => "TEST", "latitude" => 55.949228, "longitude" => -3.364303, "altitude" => 0, "groundspeed" => 0, "planned_destairport" => "TEST", "planned_depairport" => "TEST");
-
-            if (count($pilots) == 0) {
-                return false;
-            }
-            if (($this->airportCoordinates['lat'] == null) || ($this->airportCoordinates['long'] == null)) {
-                return false;
-            }
-
-
-            $filteredResults = [];
-            foreach ($pilots as $pilot) {
-                if (($this->getCoordDistance($pilot['latitude'], $pilot['longitude'], $this->airportCoordinates['lat'], $this->airportCoordinates['long']) < $this->maxDistanceFromAirport)) {
-                    if (($pilot['groundspeed'] <= $this->maxAircraftGroundspeed) && ($pilot['altitude'] <= $this->maxAircraftAltitude)) {
-                        $filteredResults[] = $pilot;
-                    }
-                }
-
-            }
-            $this->aircraftSearchResults = $filteredResults;
-            return true;
-        }
-
-        function checkIfAircraftAreOnStand()
-        {
-            $pilots = $this->aircraftSearchResults;
-            $stands = $this->stands;
-            $standDistanceBoundary = $this->maxStandDistance;
-
-            foreach ($pilots as $pilot) {
-
-                // Array to hold the stands they could possibly be on
-                $possibleStands = [];
-
-                // Check each stand to see how close they are
-                foreach ($stands as $stand) {
-
-                    // Find distance between aircraft and stand
-                    $distance = $this->getCoordDistance($stand['latcoord'], $stand['longcoord'], $pilot['latitude'], $pilot['longitude']);
-
-
-                    if ($distance < $standDistanceBoundary) {
-                        // This could be a possible stand as the aircraft is close
-                        $possibleStands[] = array('id' => $stand['id'], 'distance' => $distance);
-                    }
-
-                }
-
-                // Check how many stands are possible
-                if (count($possibleStands) > 1) {
-
-                    $minDistance = $standDistanceBoundary; // Cant be more than $standDistanceBoundary
-                    $minStandID = null;
-
-                    foreach ($possibleStands as $stand) {
-
-                        if ($stand['distance'] < $minDistance) {
-                            // New smallest distance from stand
-                            $minDistance = $stand['distance'];
-                            $minStandID = $stand['id'];
-                        }
-
-                    }
-                    $this->checkAndSetStandOccupied($minStandID, $pilot);
-                } else if (count($possibleStands) == 1) {
-                    $this->checkAndSetStandOccupied($possibleStands[0]['id'], $pilot);
-                }
-
-            }
-        }
-
-        function checkAndSetStandOccupied($standID, $pilot)
-        {
-
-            // Firstly set the acutal stand as occupied
-            $this->setStandOccupied($standID, $pilot);
-
-            // Check for side stands
-            $standSides = $this->standSides($standID);
-            if ($standSides) {
-
-                foreach ($standSides as $stand) {
-                    $this->setStandOccupied($stand, $pilot);
-                }
-
-                // Hide the side stands when option is set
-                if ($this->hideStandSidesWhenOccupied) {
-
-                    // Get the stand root number
-                    $standRoot = str_replace("R", "", $standID);
-                    $standRoot = str_replace("L", "", $standRoot);
-                    $standRoot = str_replace("A", "", $standRoot);
-                    $standRoot = str_replace("B", "", $standRoot);
-                    $standRoot = str_replace("C", "", $standRoot);
-
-                    if (isset($this->stands[$standRoot])) {
-                        // Stand root is an actual stand
-                        if (isset($this->stands[$standRoot . "R"])) {
-                            $this->unsetStandOccupied($standRoot . "R");
-                            unset($this->stands[$standRoot . "R"]);
-                        }
-                        if (isset($this->stands[$standRoot . "L"])) {
-                            $this->unsetStandOccupied($standRoot . "L");
-                            unset($this->stands[$standRoot . "L"]);
-                        }
-                        if (isset($this->stands[$standRoot . "A"])) {
-                            $this->unsetStandOccupied($standRoot . "A");
-                            unset($this->stands[$standRoot . "A"]);
-                        }
-                        if (isset($this->stands[$standRoot . "B"])) {
-                            $this->unsetStandOccupied($standRoot . "B");
-                            unset($this->stands[$standRoot . "B"]);
-                        }
-
-                    } else if (isset($this->stands[$standRoot . "C"])) {
-                        // Stand Root + C (i.e 551C) is an actual stand
-                        if (isset($this->stands[$standRoot . "R"])) {
-                            $this->unsetStandOccupied($standRoot . "R");
-                            unset($this->stands[$standRoot . "R"]);
-                        }
-                        if (isset($this->stands[$standRoot . "L"])) {
-                            $this->unsetStandOccupied($standRoot . "L");
-                            unset($this->stands[$standRoot . "L"]);
-                        }
-                        if (isset($this->stands[$standRoot . "A"])) {
-                            $this->unsetStandOccupied($standRoot . "A");
-                            unset($this->stands[$standRoot . "A"]);
-                        }
-                        if (isset($this->stands[$standRoot . "B"])) {
-                            $this->unsetStandOccupied($standRoot . "B");
-                            unset($this->stands[$standRoot . "B"]);
-                        }
-                    }
-                }
-            }
-        }
-
-        function setStandOccupied($standID, $pilot)
-        {
-            $this->stands[$standID]['occupied'] = $pilot;
-            $this->occupiedStands[$standID] = $standID;
-        }
-
-        function unsetStandOccupied($standID)
-        {
-            if (isset($this->stands[$standID]['occupied'])) {
-                unset($this->stands[$standID]['occupied']);
-            }
-            unset($this->occupiedStands[$standID]);
-        }
-
-        function standSides($standID)
-        {
-            $standSides = [];
-            $stands = $this->stands;
-
-            //Find the 'base' stand number
-            $standBase = str_replace("R", "", $standID);
-            $standBase = str_replace("L", "", $standBase);
-            $standBase = str_replace("A", "", $standBase);
-            $standBase = str_replace("B", "", $standBase);
-            $standBase = str_replace("C", "", $standBase);
-
-
-            // Check if stand has a side already
-            if (strstr($standID, "R") || strstr($standID, "L")) {
-                // Our stand is already L/R
-                if (strstr($standID, "R")) {
-                    // Set the right hand side to occupied aswell
-                    $newStand = str_replace("R", "L", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the base stand to occupied also
-                    $newStand = str_replace("R", "", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the center stand to occupied also
-                    $newStand = str_replace("R", "C", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                } else {
-                    // Set the left hand side to occupied aswell
-                    $newStand = str_replace("L", "R", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the base stand to occupied also
-                    $newStand = str_replace("L", "", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the center stand to occupied also
-                    $newStand = str_replace("L", "C", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                }
-            } else if (strstr($standID, "A") || strstr($standID, "B")) {
-                // Our stand already is A / B
-
-                if (strstr($standID, "A")) {
-                    // Set the right hand side to occupied aswell
-                    $newStand = str_replace("A", "B", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the base stand to occupied also
-                    $newStand = str_replace("A", "", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the center stand to occupied also
-                    $newStand = str_replace("A", "C", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                } else {
-                    // Set the right hand side to occupied aswell
-                    $newStand = str_replace("B", "A", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the base stand to occupied also
-                    $newStand = str_replace("B", "", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                    // Set the center stand to occupied also
-                    $newStand = str_replace("B", "C", $standID);
-                    if (isset($stands[$newStand])) {
-                        $standSides[] = $newStand;
-                    }
-                }
-
-            } else {
-                // Stand itself has no side, but may have L / R / A / B sides
-                if (isset($stands[$standBase . "L"])) {
-                    $standSides[] = $standBase . "L";
-                }
-                if (isset($stands[$standBase . "R"])) {
-                    $standSides[] = $standBase . "R";
-                }
-                if (isset($stands[$standBase . "C"])) {
-                    $standSides[] = $standBase . "C";
-                }
-                if (isset($stands[$standBase . "A"])) {
-                    $standSides[] = $standBase . "A";
-                }
-                if (isset($stands[$standBase . "B"])) {
-                    $standSides[] = $standBase . "B";
-                }
-            }
-
-            if (count($standSides) == 0) {
-                return false;
-            } else {
-                return $standSides;
-            }
-
-        }
-
-
-        /*
-
-          Support Functions
-
-         */
-
-        function getCoordDistance($latitude1, $longitude1, $latitude2, $longitude2)
-        {
-            $earth_radius = 6371;
-
-            $latitude1 = floatval($latitude1);
-            $longitude1 = floatval($longitude1);
-            $latitude2 = floatval($latitude2);
-            $longitude2 = floatval($longitude2);
-
-            $dLat = deg2rad($latitude2 - $latitude1);
-            $dLon = deg2rad($longitude2 - $longitude1);
-
-            $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($latitude1)) * cos(deg2rad($latitude2)) * sin($dLon / 2) * sin($dLon / 2);
-            $c = 2 * asin(sqrt($a));
-            $d = $earth_radius * $c;
-
-            return $d;
-
-        }
-
-        function convertCoordinateToDecimal($deg, $min, $sec, $dir)
-        {
-            // Converting DMS ( Degrees / minutes / seconds ) to decimal format
-            if ($dir == "W") {
-                return "-" . ($deg + ((($min * 60) + ($sec)) / 3600));
-            } else if ($dir == "S") {
-                return "-" . ($deg + ((($min * 60) + ($sec)) / 3600));
-            }
-            return $deg + ((($min * 60) + ($sec)) / 3600);
-        }
-
-        function convertCAALatCoord($coord)
-        {
-            $deg = substr($coord, 0, 2);
-            $min = substr($coord, 2, 2);
-            $sec = substr($coord, 4, 5);
-            $dir = substr($coord, -1);
-            return $this->convertCoordinateToDecimal($deg, $min, $sec, $dir);
-        }
-
-        function convertCAALongCoord($coord)
-        {
-            $deg = substr($coord, 0, 3);
-            $min = substr($coord, 3, 2);
-            $sec = substr($coord, 5, 5);
-            $dir = substr($coord, -1);
-            return $this->convertCoordinateToDecimal($deg, $min, $sec, $dir);
-        }
-
-        function getMaxStandDistance()
-        {
-            return $this->maxStandDistance;
-        }
-
-
-        function setMaxStandDistance($distance)
-        {
-            $this->maxStandDistance = $distance;
-            return $this;
-        }
-
-        function getHideStandSidesWhenOccupied()
-        {
-            return $this->hideStandSidesWhenOccupied;
-        }
-
-        function setHideStandSidesWhenOccupied($bool)
-        {
-            $this->hideStandSidesWhenOccupied = $bool;
-            return $this;
-        }
-
-        function getMaxDistanceFromAirport()
-        {
-            return $this->maxDistanceFromAirport;
-        }
-
-        function setMaxDistanceFromAirport($distance)
-        {
-            $this->maxDistanceFromAirport = $distance;
-            return $this;
-        }
-
-        function getMaxAircraftAltitude()
-        {
-            return $this->maxAircraftAltitude;
-        }
-
-        function setMaxAircraftAltitude($altitude)
-        {
-            $this->maxAircraftAltitude = $altitude;
-            return $this;
-        }
-
-        function getMaxAircraftGroundspeed()
-        {
-            return $this->maxAircraftGroundspeed;
-        }
-
-        function setMaxAircraftGroundspeed($speed)
-        {
-            $this->maxAircraftGroundspeed = $speed;
-            return $this;
-        }
-
-        function getStandExtensions()
-        {
-            return $this->standExtensions;
-        }
-
-        function setStandExtensions($standArray)
-        {
-            $this->standExtensions = $standArray;
-            return $this;
-        }
-
-
+        $this->airportLatitude = $airportLatitude;
+        $this->airportLongitude = $airportLongitude;
+        if ($standCoordinateFormat) $this->standCoordinateFormat = $standCoordinateFormat;
+        DecimalCoordinateHelper::validateCoordinatePairOrFail($airportLatitude, $airportLongitude);
     }
 
-?>
+    /**
+     * Loads and parse's stand data from the stand data csv file
+     *
+     * @param string $filePath Path to the Stand Data CSV file
+     * @return StandStatus
+     * @throws CoordinateOutOfBoundsException
+     * @throws Exceptions\InvalidStandException
+     * @throws UnableToLoadStandDataFileException
+     * @throws UnableToParseStandDataException
+     */
+    public function loadStandDataFromCSV(string $filePath)
+    {
+        $this->stands = [];
+
+        $standDataStream = @fopen($filePath, "r");
+
+        if (!$standDataStream) {
+            throw new UnableToLoadStandDataFileException("Unable to load the stand data file located at path '{$filePath}'");
+        }
+
+        while (($row = fgetcsv($standDataStream, 4096)) !== false) {
+            // Assume file data structure of id, latitude, longitude
+            $name = $row[0];
+            $latitude = $row[1];
+            $longitude = $row[2];
+
+            // Check if this is a header row
+            if (ctype_alpha($latitude)) {
+                continue;
+            }
+
+            switch ($this->standCoordinateFormat) {
+                case self::COORD_FORMAT_CAA:
+                    $converter = new CAACoordinateConverter($latitude, $longitude);
+                    $latitude = $converter->latitudeToDecimal();
+                    $longitude = $converter->longitudeToDecimal();
+                    break;
+            }
+
+            DecimalCoordinateHelper::validateCoordinatePairOrFail($latitude, $longitude);
+            $this->addStand($name, $latitude, $longitude);
+        }
+        fclose($standDataStream);
+        return $this;
+    }
+
+    /**
+     * Fetches parking position data from the OpenStreetMap's Overpass API.
+     *
+     * It should be noted that OSM will not always have all the data needed for every airport, and some of the data may
+     * be incorrect, out of date or ill-formatted. Check on the OpenStreetMap's editor to ensure your airport has coverage.
+     *
+     * OpenStreetMap data is licensed under the ODbL license. If you use this method, you MUST provide appropriate
+     * attribution to OSM. See https://www.openstreetmap.org/copyright for details.
+     *
+     * @param string $icao 4 letter ICAO code for the airport
+     * @param OSMStandData $osmDataLibrary Optional. Inject the OSMStandData library if you would like to change the default settings
+     * @return StandStatus
+     * @throws CoordinateOutOfBoundsException|InvalidStandException|InvalidStandException|InvalidCoordinateFormat|UnableToLoadStandDataFileException|UnableToParseStandDataException|InvalidICAOCodeException
+     */
+    public function fetchAndLoadStandDataFromOSM($icao, OSMStandData $osmDataLibrary = null)
+    {
+        if ($this->standCoordinateFormat != self::COORD_FORMAT_DECIMAL) {
+            throw new InvalidCoordinateFormat('To use OSM map data, the stand coordinate format must be set to decimal!');
+        }
+
+        if (!$osmDataLibrary) $osmDataLibrary = new OSMStandData($icao);
+        $csvPath = $osmDataLibrary->fetchStandData($this->airportLatitude, $this->airportLongitude, $this->maxDistanceFromAirport * 3);
+        return $this->loadStandDataFromCSV($csvPath);
+    }
+
+    /**
+     * Loads in stand data from an array.
+     *
+     * @param array $standData Array of stands. Expects each stand to have the name/id at index 0, latitude at index 1, and longitude at index 2
+     * @return StandStatus
+     * @throws InvalidStandException|UnableToParseStandDataException
+     */
+    public function loadStandDataFromArray(array $standData)
+    {
+        $this->stands = [];
+
+        foreach ($standData as $stand) {
+            $this->addStand($stand[0], $stand[1], $stand[2]);
+        }
+        return $this;
+    }
+
+    /**
+     * Fetches VATSIM pilot data, and runs stand assignment algorithm
+     *
+     * @return StandStatus
+     * @throws NoStandDataException
+     */
+    public function parseData()
+    {
+        // If no stands loaded, throw
+        if (count($this->stands) == 0) {
+            throw new NoStandDataException();
+        }
+
+        // Flush any stand caches
+        $this->occupiedStandsCache = null;
+        $this->unoccupiedStandsCache = null;
+
+        // Fetch pilot data
+        $vatsimData = new VatsimData();
+        $pilots = $this->getVATSIMPilots($vatsimData);
+
+        // Clear existing matches
+        foreach ($this->stands as &$stand) {
+            $stand->clearParsedData();
+        }
+
+        // If we have pilots, filter and run assignment program
+        if ($pilots && $this->getAircraftWithinParameters($pilots)) {
+            $this->checkIfAircraftAreOnStand();
+        }
+        return $this;
+    }
+
+    /*
+     * Useful functions
+     */
+
+    /**
+     * Returns a list of all the stands (minus hidden side stands if enabled)
+     *
+     * @param bool $assoc
+     * @return Stand[]
+     */
+    public function stands($assoc = false)
+    {
+        if (!$this->hideStandSidesWhenOccupied) {
+            return $this->allStands($assoc);
+        }
+        return array_filter($this->allStands($assoc), function (Stand $stand) {
+            return !$stand->isPartOfOccupiedGroup();
+        });
+    }
+
+    /**
+     * Returns all loaded stands, irrespective of if they are hidden or not
+     *
+     * @param bool $assoc
+     * @return Stand[]
+     */
+    public function allStands($assoc = false)
+    {
+        return $assoc ? $this->stands : array_values($this->stands);
+    }
+
+    /**
+     * Returns a list of all occupied stands
+     *
+     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
+     * @return Stand[]
+     */
+    public function occupiedStands($assoc = false)
+    {
+        if (!$this->occupiedStandsCache) {
+            $this->occupiedStandsCache = array_filter($this->stands(true), function (Stand $stand) {
+                return $stand->isOccupied();
+            });
+        }
+
+        return $assoc ? $this->occupiedStandsCache : array_values($this->occupiedStandsCache);
+    }
+
+    /**
+     * Returns a list of all unoccupied stands
+     *
+     * @param bool $assoc If true, the indexes of the array will be equal to the stand name/id. Default false
+     * @return Stand[]
+     */
+    public function unoccupiedStands($assoc = false)
+    {
+        if (!$this->unoccupiedStandsCache) {
+            $this->unoccupiedStandsCache = array_filter($this->stands(true), function (Stand $stand) {
+                return !$stand->isOccupied();
+            });
+        }
+
+        return $assoc ? $this->unoccupiedStandsCache : array_values($this->unoccupiedStandsCache);
+    }
+
+    /**
+     * Returns all the aircraft that are deemed on the ground
+     *
+     * @return Aircraft[]
+     */
+    public function getAllAircraft()
+    {
+        return $this->aircraftSearchResults;
+    }
+
+    /*
+     * Internal Processing Function
+     */
+
+
+    /**
+     * Returns an array of pilots from the VATSIM data feed
+     *
+     * @param VatsimData $vatsimData
+     * @return array
+     */
+    public function getVATSIMPilots(VatsimData $vatsimData)
+    {
+        if (!$vatsimData->loadData()) {
+            // VATSIM data file is down.
+            return null;
+        }
+
+        return $vatsimData->getPilots()->toArray();
+    }
+
+    /**
+     * Filters network pilot data for aircraft meeting ground conditions
+     *
+     * @param array $pilots
+     * @return bool
+     */
+    private function getAircraftWithinParameters(array $pilots)
+    {
+        $filteredAircraft = [];
+        foreach ($pilots as $pilot) {
+            $aircraft = new Aircraft($pilot);
+
+            $insideAirfieldRange = DecimalCoordinateHelper::distanceBetweenCoordinates($aircraft->latitude, $aircraft->longitude, $this->airportLatitude, $this->airportLongitude)
+                < $this->maxDistanceFromAirport;
+            $belowSpecifiedGroundspeed = $aircraft->groundspeed <= $this->maxAircraftGroundspeed;
+            $belowSpecifiedAltitude = $aircraft->altitude <= $this->maxAircraftAltitude;
+
+            if ($insideAirfieldRange && $belowSpecifiedGroundspeed && $belowSpecifiedAltitude) {
+                $filteredAircraft[] = $aircraft;
+            }
+
+        }
+        $this->aircraftSearchResults = $filteredAircraft;
+        return true;
+    }
+
+    /**
+     * Runs stand assignment algorithm
+     *
+     * @return void
+     */
+    private function checkIfAircraftAreOnStand()
+    {
+        foreach ($this->aircraftSearchResults as $aircraft) {
+            // Best stand match
+            $standMatch = null;
+            // Check each stand to see how close they are
+            foreach ($this->stands as $standIndex => $stand) {
+
+                // Find distance between aircraft and stand
+                $distance = DecimalCoordinateHelper::distanceBetweenCoordinates($stand->latitude, $stand->longitude, $aircraft->latitude, $aircraft->longitude);
+
+                $distanceInsideBound = $distance < $this->maxStandDistance;
+
+                if ($distanceInsideBound && (!$standMatch || $distance < $standMatch['distance'])) {
+                    // Best match at the moment
+                    $standMatch = [
+                        'index' => $standIndex,
+                        'stand' => $stand,
+                        'distance' => $distance,
+                    ];
+                }
+            }
+
+            // If we have a match, set it as occupied
+            if ($standMatch) {
+                $this->setStandGroupOccupied($standMatch['stand'], $aircraft);
+            }
+        }
+    }
+
+    /**
+     * Adds a stand to the lift of stands
+     *
+     * @param $id
+     * @param $latitude
+     * @param $longitude
+     * @throws Exceptions\InvalidStandException
+     * @throws UnableToParseStandDataException
+     */
+    private function addStand($id, $latitude, $longitude)
+    {
+        $stand = new Stand($id, $latitude, $longitude, $this->standExtensions, $this->standExtensionPattern);
+
+        if (isset($this->stands[$stand->getKey()])) {
+            throw new UnableToParseStandDataException("A stand ID was defined twice in the stand data! Stand ID: {$stand->getKey()}");
+        }
+        $this->stands[$stand->getKey()] = $stand;
+    }
+
+    /**
+     * Sets the given stand (by index reference) to occupied
+     *
+     * @param Stand $stand
+     * @param Aircraft $aircraft
+     */
+    private function setStandOccupied(Stand $stand, Aircraft $aircraft)
+    {
+        $this->stands[$stand->getKey()]->setOccupier($aircraft);
+    }
+
+    /**
+     * Sets a stand and its complementing stands as occupied
+     *
+     * @param Stand $stand
+     * @param Aircraft $aircraft
+     */
+    private function setStandGroupOccupied(Stand $stand, Aircraft $aircraft)
+    {
+        // Firstly set the actual stand as occupied
+        $this->setStandOccupied($stand, $aircraft);
+        $aircraft->setStandIndex($stand->getKey());
+
+        // Get complementary stands
+        $standSides = $this->complementaryStands($stand);
+        if ($standSides) {
+            foreach ($standSides as $stand) {
+                $this->setStandOccupied($stand, $aircraft);
+            }
+        }
+    }
+
+    /**
+     * Generates possible matching side stands for a given stand
+     *
+     * @param Stand $stand
+     * @return array|null
+     */
+    private function complementaryStands(Stand $stand)
+    {
+        $root = $stand->getRoot();
+        $stands = [];
+
+        foreach (array_merge([''], $this->standExtensions) as $extension) {
+            // Generate expected stand name
+            $standName = str_replace(['<standroot>', '<extensions>'], [$root, $extension], $this->standExtensionPattern);
+            if ($standName != $stand->getName() && isset($this->stands[$standName])) $stands[] = $this->stands[$standName];
+        }
+
+        return count($stands) > 0 ? $stands : null;
+    }
+
+
+    /*
+     * Getters and Setters
+     */
+
+
+    /**
+     * @return float
+     */
+    public function getMaxStandDistance()
+    {
+        return $this->maxStandDistance;
+    }
+
+    /**
+     * @param float|int $distance
+     * @return $this
+     */
+    public function setMaxStandDistance($distance)
+    {
+        $this->maxStandDistance = $distance;
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getHideStandSidesWhenOccupied()
+    {
+        return $this->hideStandSidesWhenOccupied;
+    }
+
+    /**
+     * @param bool $bool
+     * @return $this
+     */
+    public function setHideStandSidesWhenOccupied($bool)
+    {
+        $this->hideStandSidesWhenOccupied = $bool;
+        return $this;
+    }
+
+    /**
+     * @return float|int
+     */
+    public function getMaxDistanceFromAirport()
+    {
+        return $this->maxDistanceFromAirport;
+    }
+
+    /**
+     * @param float|int $distance
+     * @return $this
+     */
+    public function setMaxDistanceFromAirport($distance)
+    {
+        $this->maxDistanceFromAirport = $distance;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMaxAircraftAltitude()
+    {
+        return $this->maxAircraftAltitude;
+    }
+
+    /**
+     * @param int $altitude
+     * @return $this
+     */
+    public function setMaxAircraftAltitude($altitude)
+    {
+        $this->maxAircraftAltitude = $altitude;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getMaxAircraftGroundspeed()
+    {
+        return $this->maxAircraftGroundspeed;
+    }
+
+    /**
+     * @param int $speed
+     * @return $this
+     */
+    public function setMaxAircraftGroundspeed($speed)
+    {
+        $this->maxAircraftGroundspeed = $speed;
+        return $this;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getStandExtensions()
+    {
+        return $this->standExtensions;
+    }
+
+    /**
+     * @param string[] $standArray
+     * @return $this
+     */
+    public function setStandExtensions($standArray)
+    {
+        $this->standExtensions = $standArray;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getStandExtensionPattern()
+    {
+        return $this->standExtensionPattern;
+    }
+
+    /**
+     * @param string $standExtensionPattern
+     * @return StandStatus
+     */
+    public function setStandExtensionPattern(string $standExtensionPattern)
+    {
+        $this->standExtensionPattern = $standExtensionPattern;
+        return $this;
+    }
+}
+

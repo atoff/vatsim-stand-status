@@ -1,2 +1,6 @@
 vendor
 composer.lock
+.idea
+build
+.phpunit.result.cache
+storage/data/*.csv
