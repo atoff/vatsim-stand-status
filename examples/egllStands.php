@@ -136,7 +136,7 @@ $StandStatus->setMaxDistanceFromAirport(3)->fetchAndLoadStandDataFromOSM("EGLL")
             <h5>Aircraft On The Ground</h5>
             <div class="row">
                 <?php
-                foreach ($StandStatus->getAllAircraft() as $pilot) {
+                foreach ($StandStatus->allAircraft()() as $pilot) {
                     if($pilot->onStand()){
                         echo "<div class='col-5 bg-primary m-1 text-white'>{$pilot->callsign} ({$pilot->latitude},{$pilot->longitude}) (Stand {$pilot->getStandIndex()})</div>";
                     }else{
