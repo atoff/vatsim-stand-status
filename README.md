@@ -41,7 +41,7 @@ This package was created by [Alex Toff](https://alextoff.uk)
 ###### License
 `vatsim-stand-status` is licensed under the GNU General Public License v3.0, which can be found in the root of the package in the `LICENSE` file.
 
-All work is © Alex Toff 2019
+All work is © Alex Toff 2020 and contributors
 
 ## Installation
 
