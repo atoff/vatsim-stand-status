@@ -33,7 +33,7 @@ VATSIM network data is downloaded and parsed by [Skymeyer's Vatsimphp](https://g
 
 
 ###### Requirements
-* PHP 7.2 and above
+* PHP 7.3 and above
 
 ###### Author
 This package was created by [Alex Toff](https://alextoff.uk)
