@@ -12,6 +12,7 @@ use CobaltGrid\VatsimStandStatus\Exceptions\UnableToParseStandDataException;
 use CobaltGrid\VatsimStandStatus\Libraries\CAACoordinateConverter;
 use CobaltGrid\VatsimStandStatus\Libraries\DecimalCoordinateHelper;
 use CobaltGrid\VatsimStandStatus\Libraries\OSMStandData;
+use Throwable;
 use Vatsimphp\VatsimData;
 
 class StandStatus
@@ -79,8 +80,8 @@ class StandStatus
     public function __construct(
         $airportLatitude,
         $airportLongitude,
-        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL)
-    {
+        $standCoordinateFormat = self::COORD_FORMAT_DECIMAL
+    ) {
         $this->airportLatitude = $airportLatitude;
         $this->airportLongitude = $airportLongitude;
         if ($standCoordinateFormat) $this->standCoordinateFormat = $standCoordinateFormat;
@@ -101,10 +102,10 @@ class StandStatus
     {
         $this->stands = [];
 
-        $standDataStream = @fopen($filePath, "r");
-
-        if (!$standDataStream) {
-            throw new UnableToLoadStandDataFileException("Unable to load the stand data file located at path '{$filePath}'");
+        try {
+            $standDataStream = fopen($filePath, "r");
+        } catch (Throwable $e) {
+            throw new UnableToLoadStandDataFileException("Unable to load the stand data file located at path '{$filePath}' ({$e->getMessage()})");
         }
 
         while (($row = fgetcsv($standDataStream, 4096)) !== false) {
@@ -324,7 +325,6 @@ class StandStatus
             if ($insideAirfieldRange && $belowSpecifiedGroundspeed && $belowSpecifiedAltitude) {
                 $filteredAircraft[] = $aircraft;
             }
-
         }
         $this->aircraftSearchResults = $filteredAircraft;
         return true;
@@ -568,4 +568,3 @@ class StandStatus
         return $this;
     }
 }
-

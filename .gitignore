@@ -4,3 +4,4 @@ composer.lock
 build
 .phpunit.result.cache
 storage/data/*.csv
+composer.lock
