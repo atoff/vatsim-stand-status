@@ -95,6 +95,22 @@ class Stand
     {
         return $this->getKey();
     }
+    
+    /**
+    * @return float longitude
+    */
+    public function getLongitude()
+    {
+        return $this->longitude;
+    }
+    
+    /**
+    * @return float latitude
+    */
+    public function getLatitude()
+    {
+        return $this->latitude;
+    }    
 
     /**
      * Finds and returns the stand number without an extension
